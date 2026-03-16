@@ -360,13 +360,13 @@ export async function thucHienCheckOut(input: CheckOutInput) {
 
   // ── Bước 5: Transaction ───────────────────────────────────
   let transactionResult: {
-    booking: Awaited<ReturnType<typeof prisma.phieuDatPhong.update>>;
-    hoaDon: Awaited<ReturnType<typeof prisma.hoaDon.upsert>>;
-    surcharges: Awaited<ReturnType<typeof prisma.surcharge.findMany>>;
+    maDatPhong: string;
+    maHoaDon: string;
   };
 
   try {
-    transactionResult = await prisma.$transaction(async (tx) => {
+    transactionResult = await prisma.$transaction(
+      async (tx) => {
       if (incomingSurcharges.length > 0) {
         await tx.surcharge.createMany({
           data: incomingSurcharges.map((item) => ({
@@ -378,14 +378,10 @@ export async function thucHienCheckOut(input: CheckOutInput) {
         });
       }
 
-      const bookingSauTinhTien = await tx.phieuDatPhong.update({
+      await tx.phieuDatPhong.update({
         where: { maDatPhong: phieu.maDatPhong },
         data: {
           actualCheckOutDate,
-        },
-        include: {
-          khachHang: { select: { hoTen: true, email: true } },
-          phong: { select: { soPhong: true, giaPhong: true } },
         },
       });
 
@@ -420,30 +416,19 @@ export async function thucHienCheckOut(input: CheckOutInput) {
           phuongThucTT: soTienCon === 0 ? "TienMat" : null,
           ghiChu: ghiChuCheckOut || undefined,
         },
-        include: {
-          phieuDatPhong: {
-            include: {
-              khachHang: { select: { hoTen: true, email: true } },
-              phong: {
-                include: { loaiPhong: { select: { tenLoai: true } } },
-              },
-            },
-          },
-          nhanVien: { select: { hoTen: true } },
-        },
-      });
-
-      const surcharges = await tx.surcharge.findMany({
-        where: { maDatPhong: phieu.maDatPhong },
-        orderBy: [{ createdAt: "asc" }],
+        select: { maHoaDon: true },
       });
 
       return {
-        booking: bookingSauTinhTien,
-        hoaDon: hoaDonSauCapNhat,
-        surcharges,
+        maDatPhong: phieu.maDatPhong,
+        maHoaDon: hoaDonSauCapNhat.maHoaDon,
       };
-    });
+      },
+      {
+        maxWait: 10_000,
+        timeout: 20_000,
+      },
+    );
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -478,6 +463,42 @@ export async function thucHienCheckOut(input: CheckOutInput) {
     );
   }
 
+  const [bookingSauTinhTien, hoaDonSauCapNhat, surcharges] =
+    await Promise.all([
+      prisma.phieuDatPhong.findUnique({
+        where: { maDatPhong: transactionResult.maDatPhong },
+        include: {
+          khachHang: { select: { hoTen: true, email: true } },
+          phong: { select: { soPhong: true, giaPhong: true } },
+        },
+      }),
+      prisma.hoaDon.findUnique({
+        where: { maHoaDon: transactionResult.maHoaDon },
+        include: {
+          phieuDatPhong: {
+            include: {
+              khachHang: { select: { hoTen: true, email: true } },
+              phong: {
+                include: { loaiPhong: { select: { tenLoai: true } } },
+              },
+            },
+          },
+          nhanVien: { select: { hoTen: true } },
+        },
+      }),
+      prisma.surcharge.findMany({
+        where: { maDatPhong: transactionResult.maDatPhong },
+        orderBy: [{ createdAt: "asc" }],
+      }),
+    ]);
+
+  if (!bookingSauTinhTien || !hoaDonSauCapNhat) {
+    throw new AppError(
+      500,
+      "Không thể đọc dữ liệu check-out sau khi chốt chi phí. Vui lòng thử lại.",
+    );
+  }
+
   return {
     success: true,
     message:
@@ -485,10 +506,10 @@ export async function thucHienCheckOut(input: CheckOutInput) {
         ? "Đã chốt chi phí. Số tiền còn lại bằng 0, có thể xác nhận thanh toán offline để hoàn tất check-out."
         : "Đã chốt chi phí check-out. Vui lòng chọn phương thức thanh toán để hoàn tất.",
     data: {
-      booking: transactionResult.booking,
-      hoaDon: transactionResult.hoaDon,
-      invoice: transactionResult.hoaDon,
-      surcharges: transactionResult.surcharges,
+      booking: bookingSauTinhTien,
+      hoaDon: hoaDonSauCapNhat,
+      invoice: hoaDonSauCapNhat,
+      surcharges,
       chiTietTinhTien: {
         soNgayO,
         giaPhongMoiDem: toNumberSafe(giaPhongPerNight),
