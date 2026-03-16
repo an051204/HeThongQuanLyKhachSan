@@ -466,9 +466,15 @@ export async function thucHienCheckOut(input: CheckOutInput) {
     }
 
     console.error("[Checkout] Unexpected error during finalize:", error);
+    const detail =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : JSON.stringify(error);
     throw new AppError(
       500,
-      "Không thể chốt chi phí check-out do lỗi xử lý dữ liệu. Vui lòng thử lại hoặc kiểm tra log server.",
+      `Không thể chốt chi phí check-out do lỗi xử lý dữ liệu. Chi tiết: ${detail}`,
     );
   }
 

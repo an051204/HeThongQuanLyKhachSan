@@ -67,7 +67,8 @@ export function errorHandler(
     if (err.code === "P2002") {
       res.status(409).json({
         success: false,
-        message: "Dữ liệu bị trùng khóa duy nhất. Vui lòng kiểm tra lại thông tin.",
+        message:
+          "Dữ liệu bị trùng khóa duy nhất. Vui lòng kiểm tra lại thông tin.",
       });
       return;
     }
