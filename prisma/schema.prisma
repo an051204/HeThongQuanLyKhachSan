@@ -1,0 +1,388 @@
+// ============================================================
+// Prisma Schema - Hệ thống Quản lý Khách sạn
+// ORM: Prisma v5 | Database: PostgreSQL (Neon Tech)
+//
+// Lưu ý cấu hình Neon Serverless Pooler:
+//   - DATABASE_URL  → pooler endpoint (pgbouncer=true) cho runtime
+//   - DIRECT_URL    → direct endpoint cho prisma migrate / studio
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum TinhTrangPhong {
+  Trong        // Phòng trống, có thể đặt
+  DaDuocDat    // Đã có PhieuDatPhong, chưa check-in
+  DangSuDung   // Khách đang ở
+  CanDonDep    // Vừa check-out, cần dọn dẹp
+}
+
+enum TrangThaiDat {
+  ChoDuyet   // Vừa tạo phiếu, chờ xác nhận
+  DaXacNhan  // Nhân viên xác nhận đặt cọc
+  DaCheckIn  // Khách đã nhận phòng
+  DaCheckOut // Khách đã trả phòng
+  DaHuy      // Đã hủy phiếu
+}
+
+enum TrangThaiHoaDon {
+  ChuaThanhToan
+  DaThanhToan
+  DaHuy
+}
+
+enum VaiTroNhanVien {
+  QuanLy      // Admin - toàn quyền
+  LeTan       // Lễ tân - check-in/out, đặt phòng
+  BuongPhong  // Nhân viên buồng phòng - dọn dẹp
+  KeToan      // Kế toán - hóa đơn, báo cáo
+}
+
+enum TrangThaiDoiTac {
+  DangHoatDong
+  TamNgung
+  DaKhoa
+}
+
+enum BookingDepositStatus {
+  PENDING
+  DEPOSIT_PAID
+  CANCELLED
+}
+
+enum CheckoutPaymentMethod {
+  CASH
+  POS
+  MOMO_QR
+}
+
+enum CheckoutPaymentStatus {
+  PENDING
+  SUCCESS
+}
+
+// ============================================================
+// MODELS
+// ============================================================
+
+// -- Khách hàng cá nhân --
+model KhachHang {
+  idKhachHang   String   @id @default(cuid())
+  hoTen         String
+  sdt           String
+  email         String   @unique
+  cccd_passport String   @unique
+  diaChi        String
+  quocTich      String?
+  ngaySinh      DateTime?
+  ghiChu        String?
+
+  phieuDatPhong PhieuDatPhong[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("KhachHang")
+}
+
+// -- Danh mục loại phòng --
+model LoaiPhong {
+  idLoaiPhong String  @id @default(cuid())
+  tenLoai     String  @unique // "Standard", "Deluxe", "Suite"...
+  moTa        String?
+  sucChua     Int     @default(2) // số khách tối đa
+  soGiuong    Int     @default(1) // số giường
+  dienTich    Float?             // m²
+  tienNghi    String?            // danh sách tiện nghi (JSON text)
+  albumAnh    String?            // danh sách URL ảnh (JSON text)
+
+  phong   Phong[]
+  giaDinh GiaDinh[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("LoaiPhong")
+}
+
+// -- Phòng --
+model Phong {
+  soPhong     String         @id
+  idLoaiPhong String
+  tang        Int?
+  giaPhong    Decimal        @db.Decimal(15, 2) // giá cơ bản VNĐ/đêm
+  tinhTrang   TinhTrangPhong @default(Trong)
+  moTa        String?
+
+  loaiPhong     LoaiPhong          @relation(fields: [idLoaiPhong], references: [idLoaiPhong])
+  phieuDatPhong PhieuDatPhong[]
+  nhatKy        NhatKyBuongPhong[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Phong")
+}
+
+// -- Nhân viên --
+model NhanVien {
+  idNhanVien String         @id @default(cuid())
+  hoTen      String
+  vaiTro     VaiTroNhanVien @default(LeTan)
+  taiKhoan   String         @unique
+  matKhau    String         // bcrypt hash
+  sdt        String?
+  email      String?
+  isActive   Boolean        @default(true)
+
+  hoaDon        HoaDon[]
+  refreshTokens RefreshToken[]
+  nhatKy        NhatKyBuongPhong[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("NhanVien")
+}
+
+// -- Phiếu đặt phòng --
+model PhieuDatPhong {
+  maDatPhong  String       @id @default(cuid())
+  idKhachHang String
+  soPhong     String
+  idDoiTac    String?      // đặt qua đối tác B2B
+  thoiGianDat DateTime     @default(now())
+  ngayDen     DateTime
+  ngayDi      DateTime
+  actualCheckOutDate DateTime?
+  soNguoi     Int          @default(1)
+  tienCoc     Decimal      @db.Decimal(15, 2)
+  trangThai   TrangThaiDat @default(ChoDuyet)
+  ghiChu      String?
+
+  // Fields for MoMo deposit flow (kept alongside existing Vietnamese fields)
+  id            String?              @unique @default(cuid())
+  roomId        String?
+  checkInDate   DateTime?
+  checkOutDate  DateTime?
+  totalPrice    Decimal              @db.Decimal(15, 2) @default(0)
+  depositAmount Decimal              @db.Decimal(15, 2) @default(0)
+  status        BookingDepositStatus @default(PENDING)
+  momoTransId   String?
+
+  khachHang     KhachHang       @relation(fields: [idKhachHang], references: [idKhachHang])
+  phong         Phong           @relation(fields: [soPhong], references: [soPhong])
+  doiTac        DoiTac?         @relation(fields: [idDoiTac], references: [idDoiTac])
+  hoaDon        HoaDon?
+  chiTietDichVu ChiTietDichVu[]
+  surcharges    Surcharge[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("PhieuDatPhong")
+}
+
+// -- Hóa đơn --
+model HoaDon {
+  maHoaDon     String          @id @default(cuid())
+  maDatPhong   String          @unique
+  idNhanVien   String
+  tienPhong    Decimal         @db.Decimal(15, 2)
+  tienDichVu   Decimal         @db.Decimal(15, 2) @default(0)
+  phuPhi       Decimal         @db.Decimal(15, 2) @default(0)
+  tienCocDaTru Decimal         @db.Decimal(15, 2) @default(0)
+  tongTien     Decimal         @db.Decimal(15, 2)
+  paymentMethod CheckoutPaymentMethod?
+  paymentStatus CheckoutPaymentStatus @default(PENDING)
+  phuongThucTT String?         // "TienMat", "ChuyenKhoan", "MoMo"
+  ngayThanhToan DateTime       @default(now())
+  trangThai    TrangThaiHoaDon @default(ChuaThanhToan)
+  ghiChu       String?
+
+  phieuDatPhong PhieuDatPhong @relation(fields: [maDatPhong], references: [maDatPhong])
+  nhanVien      NhanVien      @relation(fields: [idNhanVien], references: [idNhanVien])
+  vnpayTransactions VnpayTransaction[] @relation("HoaDonVnpayTransactions")
+  momoTransaction MomoTransaction? @relation("HoaDonMomoTransaction")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("HoaDon")
+}
+
+// -- Phụ phí khi check-out (minibar, giặt ủi, hư hại...) --
+model Surcharge {
+  id         String   @id @default(cuid())
+  maDatPhong String
+  tenDichVu  String
+  soTien     Decimal  @db.Decimal(15, 2)
+  ghiChu     String?
+
+  phieuDatPhong PhieuDatPhong @relation(fields: [maDatPhong], references: [maDatPhong], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([maDatPhong])
+  @@map("Surcharge")
+}
+
+// -- Dịch vụ (minibar, giặt, spa...) --
+model DichVu {
+  idDichVu  String  @id @default(cuid())
+  tenDichVu String  @unique
+  donGia    Decimal @db.Decimal(15, 2)
+  donVi     String  // "lan", "dem", "nguoi", "kg"
+  moTa      String?
+  isActive  Boolean @default(true)
+
+  chiTiet ChiTietDichVu[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("DichVu")
+}
+
+// -- Chi tiết dịch vụ theo phiếu đặt phòng --
+model ChiTietDichVu {
+  id         String   @id @default(cuid())
+  maDatPhong String
+  idDichVu   String
+  soLuong    Int      @default(1)
+  donGia     Decimal  @db.Decimal(15, 2) // snapshot giá tại thời điểm dùng
+  ngaySuDung DateTime @default(now())
+
+  phieuDatPhong PhieuDatPhong @relation(fields: [maDatPhong], references: [maDatPhong])
+  dichVu        DichVu        @relation(fields: [idDichVu], references: [idDichVu])
+
+  createdAt DateTime @default(now())
+
+  @@map("ChiTietDichVu")
+}
+
+// -- Giá đặc biệt theo mùa / sự kiện --
+model GiaDinh {
+  id          String   @id @default(cuid())
+  idLoaiPhong String
+  tuNgay      DateTime
+  denNgay     DateTime
+  giaMoi      Decimal  @db.Decimal(15, 2)
+  tenMua      String?  // "Tết Nguyên Đán", "Lễ 30/4"...
+  moTa        String?
+
+  loaiPhong LoaiPhong @relation(fields: [idLoaiPhong], references: [idLoaiPhong])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("GiaDinh")
+}
+
+// -- Đối tác B2B (công ty du lịch, OTA...) --
+model DoiTac {
+  idDoiTac       String          @id @default(cuid())
+  tenDoiTac      String
+  email          String          @unique
+  sdt            String?
+  diaChi         String?
+  tyLeChietKhau  Float           @default(0) // % chiết khấu
+  trangThai      TrangThaiDoiTac @default(DangHoatDong)
+  apiKey         String?         @unique     // xác thực B2B API
+  ghiChu         String?
+
+  phieuDatPhong PhieuDatPhong[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("DoiTac")
+}
+
+// -- Refresh token (JWT revocation) --
+model RefreshToken {
+  id         String   @id @default(cuid())
+  idNhanVien String
+  token      String   @unique
+  expiresAt  DateTime
+  isRevoked  Boolean  @default(false)
+
+  nhanVien NhanVien @relation(fields: [idNhanVien], references: [idNhanVien])
+
+  createdAt DateTime @default(now())
+
+  @@map("RefreshToken")
+}
+
+// -- Nhật ký buồng phòng (dọn dẹp, bảo trì) --
+model NhatKyBuongPhong {
+  id         String   @id @default(cuid())
+  soPhong    String
+  idNhanVien String
+  hanhDong   String   // "DonDep", "BaoTri", "KiemTra"
+  ghiChu     String?
+  thoiGian   DateTime @default(now())
+
+  phong    Phong    @relation(fields: [soPhong], references: [soPhong])
+  nhanVien NhanVien @relation(fields: [idNhanVien], references: [idNhanVien])
+
+  @@map("NhatKyBuongPhong")
+}
+
+// -- VNPay Payment Transactions (Legacy) --
+model VnpayTransaction {
+  id                String    @id @default(cuid())
+  maHoaDon          String
+  txnRef            String    @unique
+  amount            Decimal   @db.Decimal(15, 2)
+  status            String    @default("Created") // Created, Success, Failed, InvalidSignature
+  responseCode      String?
+  transactionNo     String?
+  bankCode          String?
+  sourceLast        String?
+  requestPayload    String?
+  callbackAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  hoaDon HoaDon @relation("HoaDonVnpayTransactions", fields: [maHoaDon], references: [maHoaDon])
+
+  @@index([maHoaDon])
+  @@map("VnpayTransaction")
+}
+
+// -- MoMo Payment Transactions --
+model MomoTransaction {
+  id               String   @id @default(cuid())
+  orderId          String   @unique // HD_maHoaDon_timestamp
+  maHoaDon         String   @unique
+  amount           Decimal  @db.Decimal(15, 2)
+  requestId        String
+  transId          String?  // MoMo transaction ID
+  status           String   @default("PENDING") // PENDING, SUCCESS, FAILED
+  extraData        String?  // Base64 encoded JSON
+  responsePayload  String?  // Full MoMo API response
+  transDate        DateTime? // MoMo transaction date
+
+  hoaDon HoaDon @relation("HoaDonMomoTransaction", fields: [maHoaDon], references: [maHoaDon], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([maHoaDon])
+  @@index([status])
+  @@index([createdAt])
+  @@map("MomoTransaction")
+}

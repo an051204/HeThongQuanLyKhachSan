@@ -1,0 +1,2 @@
+ALTER TABLE "LoaiPhong"
+ADD COLUMN "albumAnh" TEXT;
