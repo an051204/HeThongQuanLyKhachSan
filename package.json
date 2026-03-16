@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
+    "vercel-build": "prisma generate",
+    "postinstall": "prisma generate",
     "start": "node dist/server.js",
     "smoke:backend": "node -r dotenv/config scripts/smoke-backend.js",
     "test:e2e:momo-booking": "node -r dotenv/config scripts/momo-booking-e2e.js",
