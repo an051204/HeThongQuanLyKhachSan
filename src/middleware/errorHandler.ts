@@ -1,6 +1,7 @@
 // src/middleware/errorHandler.ts
 
 import { Request, Response, NextFunction } from "express";
+import { Prisma } from "@prisma/client";
 
 // ── Custom error class ────────────────────────────────────────
 export class AppError extends Error {
@@ -32,6 +33,9 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   console.error(`[Error] ${err.name}: ${err.message}`);
+  if (err.stack) {
+    console.error(err.stack);
+  }
 
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
@@ -39,6 +43,42 @@ export function errorHandler(
       message: err.message,
     });
     return;
+  }
+
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    res.status(500).json({
+      success: false,
+      message:
+        "Không thể khởi tạo Prisma Client trên môi trường server. Hãy kiểm tra DATABASE_URL/DIRECT_URL và bảo đảm Prisma Client được generate khi build.",
+    });
+    return;
+  }
+
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === "P2021" || err.code === "P2022") {
+      res.status(500).json({
+        success: false,
+        message:
+          "Schema database chưa đồng bộ với code hiện tại (thiếu bảng/cột). Hãy chạy prisma migrate deploy trên database production.",
+      });
+      return;
+    }
+
+    if (err.code === "P2002") {
+      res.status(409).json({
+        success: false,
+        message: "Dữ liệu bị trùng khóa duy nhất. Vui lòng kiểm tra lại thông tin.",
+      });
+      return;
+    }
+
+    if (err.code === "P2025") {
+      res.status(404).json({
+        success: false,
+        message: "Không tìm thấy dữ liệu tương ứng.",
+      });
+      return;
+    }
   }
 
   // Lỗi không xác định — che thông tin nội bộ với client

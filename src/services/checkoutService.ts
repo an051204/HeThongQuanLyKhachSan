@@ -9,6 +9,7 @@
 // ============================================================
 
 import axios from "axios";
+import { Prisma } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import prisma from "../lib/db";
 import { AppError } from "../middleware/errorHandler";
@@ -358,84 +359,118 @@ export async function thucHienCheckOut(input: CheckOutInput) {
     .join(" | ");
 
   // ── Bước 5: Transaction ───────────────────────────────────
-  const transactionResult = await prisma.$transaction(async (tx) => {
-    if (incomingSurcharges.length > 0) {
-      await tx.surcharge.createMany({
-        data: incomingSurcharges.map((item) => ({
-          maDatPhong: phieu.maDatPhong,
-          tenDichVu: item.tenDichVu,
-          soTien: new Decimal(item.soTien),
-          ghiChu: item.ghiChu,
-        })),
+  let transactionResult: {
+    booking: Awaited<ReturnType<typeof prisma.phieuDatPhong.update>>;
+    hoaDon: Awaited<ReturnType<typeof prisma.hoaDon.upsert>>;
+    surcharges: Awaited<ReturnType<typeof prisma.surcharge.findMany>>;
+  };
+
+  try {
+    transactionResult = await prisma.$transaction(async (tx) => {
+      if (incomingSurcharges.length > 0) {
+        await tx.surcharge.createMany({
+          data: incomingSurcharges.map((item) => ({
+            maDatPhong: phieu.maDatPhong,
+            tenDichVu: item.tenDichVu,
+            soTien: new Decimal(item.soTien),
+            ghiChu: item.ghiChu,
+          })),
+        });
+      }
+
+      const bookingSauTinhTien = await tx.phieuDatPhong.update({
+        where: { maDatPhong: phieu.maDatPhong },
+        data: {
+          actualCheckOutDate,
+        },
+        include: {
+          khachHang: { select: { hoTen: true, email: true } },
+          phong: { select: { soPhong: true, giaPhong: true } },
+        },
       });
-    }
 
-    const bookingSauTinhTien = await tx.phieuDatPhong.update({
-      where: { maDatPhong: phieu.maDatPhong },
-      data: {
-        actualCheckOutDate,
-      },
-      include: {
-        khachHang: { select: { hoTen: true, email: true } },
-        phong: { select: { soPhong: true, giaPhong: true } },
-      },
-    });
-
-    const hoaDonSauCapNhat = await tx.hoaDon.upsert({
-      where: { maDatPhong: phieu.maDatPhong },
-      update: {
-        idNhanVien,
-        tienPhong: new Decimal(tienPhong),
-        tienDichVu: new Decimal(0),
-        phuPhi: new Decimal(tongPhuPhi),
-        tienCocDaTru: new Decimal(tienCocDaThu),
-        tongTien: new Decimal(soTienCon),
-        paymentMethod: null,
-        paymentStatus: "PENDING",
-        ngayThanhToan: actualCheckOutDate,
-        trangThai: soTienCon === 0 ? "DaThanhToan" : "ChuaThanhToan",
-        phuongThucTT: soTienCon === 0 ? "TienMat" : null,
-        ghiChu: ghiChuCheckOut || undefined,
-      },
-      create: {
-        maDatPhong: phieu.maDatPhong,
-        idNhanVien,
-        tienPhong: new Decimal(tienPhong),
-        tienDichVu: new Decimal(0),
-        phuPhi: new Decimal(tongPhuPhi),
-        tienCocDaTru: new Decimal(tienCocDaThu),
-        tongTien: new Decimal(soTienCon),
-        paymentMethod: null,
-        paymentStatus: "PENDING",
-        ngayThanhToan: actualCheckOutDate,
-        trangThai: soTienCon === 0 ? "DaThanhToan" : "ChuaThanhToan",
-        phuongThucTT: soTienCon === 0 ? "TienMat" : null,
-        ghiChu: ghiChuCheckOut || undefined,
-      },
-      include: {
-        phieuDatPhong: {
-          include: {
-            khachHang: { select: { hoTen: true, email: true } },
-            phong: {
-              include: { loaiPhong: { select: { tenLoai: true } } },
+      const hoaDonSauCapNhat = await tx.hoaDon.upsert({
+        where: { maDatPhong: phieu.maDatPhong },
+        update: {
+          idNhanVien,
+          tienPhong: new Decimal(tienPhong),
+          tienDichVu: new Decimal(0),
+          phuPhi: new Decimal(tongPhuPhi),
+          tienCocDaTru: new Decimal(tienCocDaThu),
+          tongTien: new Decimal(soTienCon),
+          paymentMethod: null,
+          paymentStatus: "PENDING",
+          ngayThanhToan: actualCheckOutDate,
+          trangThai: soTienCon === 0 ? "DaThanhToan" : "ChuaThanhToan",
+          phuongThucTT: soTienCon === 0 ? "TienMat" : null,
+          ghiChu: ghiChuCheckOut || undefined,
+        },
+        create: {
+          maDatPhong: phieu.maDatPhong,
+          idNhanVien,
+          tienPhong: new Decimal(tienPhong),
+          tienDichVu: new Decimal(0),
+          phuPhi: new Decimal(tongPhuPhi),
+          tienCocDaTru: new Decimal(tienCocDaThu),
+          tongTien: new Decimal(soTienCon),
+          paymentMethod: null,
+          paymentStatus: "PENDING",
+          ngayThanhToan: actualCheckOutDate,
+          trangThai: soTienCon === 0 ? "DaThanhToan" : "ChuaThanhToan",
+          phuongThucTT: soTienCon === 0 ? "TienMat" : null,
+          ghiChu: ghiChuCheckOut || undefined,
+        },
+        include: {
+          phieuDatPhong: {
+            include: {
+              khachHang: { select: { hoTen: true, email: true } },
+              phong: {
+                include: { loaiPhong: { select: { tenLoai: true } } },
+              },
             },
           },
+          nhanVien: { select: { hoTen: true } },
         },
-        nhanVien: { select: { hoTen: true } },
-      },
-    });
+      });
 
-    const surcharges = await tx.surcharge.findMany({
-      where: { maDatPhong: phieu.maDatPhong },
-      orderBy: [{ createdAt: "asc" }],
-    });
+      const surcharges = await tx.surcharge.findMany({
+        where: { maDatPhong: phieu.maDatPhong },
+        orderBy: [{ createdAt: "asc" }],
+      });
 
-    return {
-      booking: bookingSauTinhTien,
-      hoaDon: hoaDonSauCapNhat,
-      surcharges,
-    };
-  });
+      return {
+        booking: bookingSauTinhTien,
+        hoaDon: hoaDonSauCapNhat,
+        surcharges,
+      };
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2021" || error.code === "P2022") {
+        throw new AppError(
+          500,
+          "Database production đang thiếu bảng/cột cho luồng checkout. Hãy chạy prisma migrate deploy trên production rồi thử lại.",
+        );
+      }
+
+      if (error.code === "P2003") {
+        throw new AppError(
+          400,
+          "Dữ liệu checkout không hợp lệ theo ràng buộc hệ thống. Vui lòng kiểm tra booking/phòng/hóa đơn liên quan.",
+        );
+      }
+    }
+
+    console.error("[Checkout] Unexpected error during finalize:", error);
+    throw new AppError(
+      500,
+      "Không thể chốt chi phí check-out do lỗi xử lý dữ liệu. Vui lòng thử lại hoặc kiểm tra log server.",
+    );
+  }
 
   return {
     success: true,
