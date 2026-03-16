@@ -177,12 +177,6 @@ async function cleanupSmokeData(state) {
       select: { maHoaDon: true },
     });
 
-    if (invoices.length > 0) {
-      await prisma.vnpayTransaction.deleteMany({
-        where: { maHoaDon: { in: invoices.map((item) => item.maHoaDon) } },
-      });
-    }
-
     await prisma.hoaDon.deleteMany({ where: { maDatPhong: state.bookingId } });
     await prisma.chiTietDichVu.deleteMany({
       where: { maDatPhong: state.bookingId },
@@ -761,31 +755,6 @@ async function main() {
   );
   verified.push("invoice_pagination_search");
 
-  const vnpayCreate = await apiRequest({
-    method: "POST",
-    path: `/payment/vnpay/${invoiceId}/create`,
-    token: accountantToken,
-    expectedStatus: 200,
-  });
-  const vnpayCreateData = requireSuccess(vnpayCreate, "create vnpay payment");
-  assert(
-    typeof vnpayCreateData.paymentUrl === "string" &&
-      vnpayCreateData.paymentUrl.includes("vnp_TxnRef"),
-    "VNPay create payment did not return a valid payment URL.",
-  );
-  assert(
-    typeof vnpayCreateData.txnRef === "string" &&
-      vnpayCreateData.txnRef.length > 0,
-    "VNPay create payment did not return txnRef.",
-  );
-  verified.push("accountant_create_vnpay_url");
-
-  await apiRequest({
-    path: `/payment/vnpay/${vnpayCreateData.txnRef}/invoice`,
-    expectedStatus: 400,
-  });
-  verified.push("customer_invoice_export_blocked_before_success");
-
   const payInvoice = await apiRequest({
     method: "PATCH",
     path: `/hoa-don/${invoiceId}/thanh-toan`,
@@ -822,14 +791,6 @@ async function main() {
     "Room clean did not reset room state.",
   );
   verified.push("housekeeping_room_clean");
-
-  await apiRequest({
-    method: "POST",
-    path: `/payment/vnpay/${invoiceId}/create`,
-    token: housekeepingToken,
-    expectedStatus: 403,
-  });
-  verified.push("housekeeping_vnpay_forbidden");
 
   await apiRequest({
     path: "/doi-tac",

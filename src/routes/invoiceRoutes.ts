@@ -22,7 +22,7 @@ router.patch(
   "/:maHoaDon/thanh-toan",
   [
     param("maHoaDon").notEmpty(),
-    body("phuongThucTT").optional().isIn(["TienMat", "ChuyenKhoan", "VNPay"]),
+    body("phuongThucTT").optional().isIn(["TienMat", "ChuyenKhoan", "MoMo"]),
   ],
   payInvoice,
 );

@@ -12,7 +12,7 @@ export type TrangThaiDat =
 
 export type TrangThaiHoaDon = "ChuaThanhToan" | "DaThanhToan" | "DaHuy";
 
-export type PhuongThucThanhToan = "TienMat" | "ChuyenKhoan" | "VNPay";
+export type PhuongThucThanhToan = "TienMat" | "ChuyenKhoan" | "MoMo";
 
 export type CheckoutPaymentMethod = "CASH" | "POS" | "MOMO_QR";
 
@@ -389,24 +389,4 @@ export interface LoginInput {
 export interface LoginResponse {
   token: string;
   nhanVien: NhanVien;
-}
-
-export interface VnpayCreatePaymentData {
-  maHoaDon: string;
-  phuongThuc: "VNPay";
-  tongTien: number;
-  txnRef: string;
-  paymentUrl: string;
-  hetHanLuc: string;
-  note?: string;
-}
-
-export interface VnpayReturnData {
-  maHoaDon: string;
-  txnRef: string;
-  responseCode: string;
-  transactionNo: string;
-  bankCode: string;
-  paid: boolean;
-  customerInvoiceUrl?: string;
 }

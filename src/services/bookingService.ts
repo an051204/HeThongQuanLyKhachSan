@@ -162,7 +162,8 @@ export async function taoDatPhong(input: TaoDatPhongInput) {
 
   return {
     success: true,
-    message: "Đặt phòng thành công. Vui lòng thanh toán tiền cọc qua VNPay.",
+    message:
+      "Đặt phòng thành công. Vui lòng thanh toán tiền cọc theo hướng dẫn tại trang thanh toán.",
     data: phieuDatPhong,
   };
 }

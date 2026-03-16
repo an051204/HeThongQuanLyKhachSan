@@ -27,8 +27,6 @@ import type {
   CheckoutGenerateQrResult,
   CheckoutStatusResult,
   ThongKeTongQuan,
-  VnpayCreatePaymentData,
-  VnpayReturnData,
   PaginatedResult,
   PaginationMeta,
   TimKiemPhongInput,
@@ -46,10 +44,6 @@ const apiClient = axios.create({
   },
   timeout: 15000, // 15 giây
 });
-
-function getApiBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
-}
 
 const EMPTY_PAGINATION: PaginationMeta = {
   page: 1,
@@ -442,47 +436,11 @@ export async function thanhToanHoaDon(
   return data.data!;
 }
 
-export async function taoLinkThanhToanVNPay(
-  maHoaDon: string,
-): Promise<VnpayCreatePaymentData> {
-  const { data } = await apiClient.post<ApiResponse<VnpayCreatePaymentData>>(
-    `/payment/vnpay/${maHoaDon}/create`,
-  );
-  return data.data!;
-}
-
-export async function taoLinkThanhToanVNPayCongKhai(
-  maHoaDon: string,
-): Promise<VnpayCreatePaymentData> {
-  const { data } = await apiClient.post<ApiResponse<VnpayCreatePaymentData>>(
-    `/payment/vnpay/public/${maHoaDon}/create`,
-  );
-  return data.data!;
-}
-
-export async function xuLyVnpayReturn(
-  rawQuery: string,
-): Promise<{ success: boolean; message?: string; data?: VnpayReturnData }> {
-  const query = rawQuery.startsWith("?") ? rawQuery.slice(1) : rawQuery;
-  const { data } = await apiClient.get<
-    ApiResponse<VnpayReturnData> & { success: boolean }
-  >(`/payment/vnpay/return?${query}`);
-  return {
-    success: Boolean((data as any).success),
-    message: data.message,
-    data: data.data,
-  };
-}
-
 export async function xuatHoaDonHtml(maHoaDon: string): Promise<Blob> {
   const response = await apiClient.get(`/hoa-don/${maHoaDon}/xuat`, {
     responseType: "blob",
   });
   return response.data as Blob;
-}
-
-export function getCustomerInvoiceExportUrlByTxnRef(txnRef: string): string {
-  return `${getApiBaseUrl()}/payment/vnpay/${txnRef}/invoice`;
 }
 
 // ============================================================

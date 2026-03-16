@@ -213,7 +213,6 @@ model HoaDon {
 
   phieuDatPhong PhieuDatPhong @relation(fields: [maDatPhong], references: [maDatPhong])
   nhanVien      NhanVien      @relation(fields: [idNhanVien], references: [idNhanVien])
-  vnpayTransactions VnpayTransaction[] @relation("HoaDonVnpayTransactions")
   momoTransaction MomoTransaction? @relation("HoaDonMomoTransaction")
 
   createdAt DateTime @default(now())
@@ -339,28 +338,6 @@ model NhatKyBuongPhong {
   nhanVien NhanVien @relation(fields: [idNhanVien], references: [idNhanVien])
 
   @@map("NhatKyBuongPhong")
-}
-
-// -- VNPay Payment Transactions (Legacy) --
-model VnpayTransaction {
-  id                String    @id @default(cuid())
-  maHoaDon          String
-  txnRef            String    @unique
-  amount            Decimal   @db.Decimal(15, 2)
-  status            String    @default("Created") // Created, Success, Failed, InvalidSignature
-  responseCode      String?
-  transactionNo     String?
-  bankCode          String?
-  sourceLast        String?
-  requestPayload    String?
-  callbackAt        DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  hoaDon HoaDon @relation("HoaDonVnpayTransactions", fields: [maHoaDon], references: [maHoaDon])
-
-  @@index([maHoaDon])
-  @@map("VnpayTransaction")
 }
 
 // -- MoMo Payment Transactions --
