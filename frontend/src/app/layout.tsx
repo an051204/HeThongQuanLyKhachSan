@@ -25,6 +25,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
+      <head>
+        <link rel="icon" href="/favicon.ico" />
+      </head>
       <body className={`${beVietnamPro.className} min-h-screen`}>
         <AuthProvider>
           <div className="relative flex min-h-screen flex-col">
