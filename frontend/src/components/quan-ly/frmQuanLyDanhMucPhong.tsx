@@ -839,6 +839,7 @@ export default function FrmQuanLyDanhMucPhong() {
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-[44px] text-sm"
                 disabled={!typePagination.hasPreviousPage || loading}
                 onClick={() => setTypePage((prev) => Math.max(1, prev - 1))}
               >
@@ -847,6 +848,7 @@ export default function FrmQuanLyDanhMucPhong() {
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-[44px] text-sm"
                 disabled={!typePagination.hasNextPage || loading}
                 onClick={() => setTypePage((prev) => prev + 1)}
               >
@@ -857,115 +859,198 @@ export default function FrmQuanLyDanhMucPhong() {
           {loading ? (
             <div className="p-8 text-center text-gray-400">Đang tải...</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                  <tr>
-                    {[
-                      "Loại",
-                      "Sức chứa",
-                      "Giường",
-                      "Diện tích",
-                      "Tiện nghi",
-                      "Gallery",
-                      "Mô tả",
-                      "",
-                    ].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {loaiPhongList.map((loai) => {
-                    const amenities = parseListField(loai.tienNghi);
-                    const gallery = parseListField(loai.albumAnh);
+            <>
+              <div className="space-y-3 px-4 pb-4 lg:hidden">
+                {loaiPhongList.map((loai) => {
+                  const amenities = parseListField(loai.tienNghi);
+                  const gallery = parseListField(loai.albumAnh);
 
-                    return (
-                      <tr
-                        key={loai.idLoaiPhong}
-                        className="align-top hover:bg-gray-50"
-                      >
-                        <td className="px-4 py-3 font-semibold">
-                          {loai.tenLoai}
-                        </td>
-                        <td className="px-4 py-3">{loai.sucChua} khách</td>
-                        <td className="px-4 py-3">
-                          {loai.soGiuong ?? 1} giường
-                        </td>
-                        <td className="px-4 py-3">
-                          {loai.dienTich ? `${loai.dienTich} m2` : "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex max-w-xs flex-wrap gap-1.5">
-                            {amenities.length > 0 ? (
-                              amenities.slice(0, 4).map((item) => (
-                                <span
-                                  key={item}
-                                  className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600"
-                                >
-                                  {item}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {gallery.length > 0 ? (
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="h-12 w-16 rounded-lg bg-cover bg-center bg-no-repeat"
-                                style={{
-                                  backgroundImage: gallery[0]
-                                    ? `url('${gallery[0]}')`
-                                    : "none",
-                                  backgroundColor: "#e2e8f0",
-                                }}
-                                title={gallery[0] || "Không có ảnh"}
-                              />
-                              <span className="text-xs text-gray-500">
-                                {gallery.length} ảnh
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400">
-                              Không có ảnh
+                  return (
+                    <div
+                      key={loai.idLoaiPhong}
+                      className="space-y-3 rounded-xl border border-slate-200 bg-white p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {loai.tenLoai}
+                          </p>
+                          <p className="text-sm text-slate-600">
+                            {loai.sucChua} khách • {loai.soGiuong ?? 1} giường •{" "}
+                            {loai.dienTich ? `${loai.dienTich} m2` : "—"}
+                          </p>
+                        </div>
+                        {gallery.length > 0 ? (
+                          <div
+                            className="h-14 w-20 rounded-lg bg-cover bg-center bg-no-repeat"
+                            style={{
+                              backgroundImage: gallery[0]
+                                ? `url('${gallery[0]}')`
+                                : "none",
+                              backgroundColor: "#e2e8f0",
+                            }}
+                            title={gallery[0] || "Không có ảnh"}
+                          />
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {amenities.length > 0 ? (
+                          amenities.slice(0, 6).map((item) => (
+                            <span
+                              key={item}
+                              className="rounded-full bg-slate-100 px-2 py-1 text-sm text-slate-600"
+                            >
+                              {item}
                             </span>
-                          )}
-                        </td>
-                        <td className="max-w-xs px-4 py-3 text-gray-500">
-                          {loai.moTa ?? "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => openEditType(loai)}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() =>
-                                handleDeleteType(loai.idLoaiPhong, loai.tenLoai)
-                              }
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-400">
+                            Không có tiện nghi
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-sm text-slate-600">
+                        {loai.moTa ?? "—"}
+                      </p>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="ghost"
+                          className="min-h-[44px] gap-1 px-3 text-sm"
+                          onClick={() => openEditType(loai)}
+                        >
+                          <Pencil className="h-4 w-4" /> Sửa
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="min-h-[44px] gap-1 px-3 text-sm text-red-500 hover:text-red-700"
+                          onClick={() =>
+                            handleDeleteType(loai.idLoaiPhong, loai.tenLoai)
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" /> Xóa
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                    <tr>
+                      {[
+                        "Loại",
+                        "Sức chứa",
+                        "Giường",
+                        "Diện tích",
+                        "Tiện nghi",
+                        "Gallery",
+                        "Mô tả",
+                        "",
+                      ].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {loaiPhongList.map((loai) => {
+                      const amenities = parseListField(loai.tienNghi);
+                      const gallery = parseListField(loai.albumAnh);
+
+                      return (
+                        <tr
+                          key={loai.idLoaiPhong}
+                          className="align-top hover:bg-gray-50"
+                        >
+                          <td className="px-4 py-3 font-semibold">
+                            {loai.tenLoai}
+                          </td>
+                          <td className="px-4 py-3">{loai.sucChua} khách</td>
+                          <td className="px-4 py-3">
+                            {loai.soGiuong ?? 1} giường
+                          </td>
+                          <td className="px-4 py-3">
+                            {loai.dienTich ? `${loai.dienTich} m2` : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex max-w-xs flex-wrap gap-1.5">
+                              {amenities.length > 0 ? (
+                                amenities.slice(0, 4).map((item) => (
+                                  <span
+                                    key={item}
+                                    className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600"
+                                  >
+                                    {item}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            {gallery.length > 0 ? (
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="h-12 w-16 rounded-lg bg-cover bg-center bg-no-repeat"
+                                  style={{
+                                    backgroundImage: gallery[0]
+                                      ? `url('${gallery[0]}')`
+                                      : "none",
+                                    backgroundColor: "#e2e8f0",
+                                  }}
+                                  title={gallery[0] || "Không có ảnh"}
+                                />
+                                <span className="text-xs text-gray-500">
+                                  {gallery.length} ảnh
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">
+                                Không có ảnh
+                              </span>
+                            )}
+                          </td>
+                          <td className="max-w-xs px-4 py-3 text-gray-500">
+                            {loai.moTa ?? "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openEditType(loai)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-500 hover:text-red-700"
+                                onClick={() =>
+                                  handleDeleteType(
+                                    loai.idLoaiPhong,
+                                    loai.tenLoai,
+                                  )
+                                }
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -995,6 +1080,7 @@ export default function FrmQuanLyDanhMucPhong() {
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-[44px] text-sm"
                 disabled={!roomPagination.hasPreviousPage || loading}
                 onClick={() => setRoomPage((prev) => Math.max(1, prev - 1))}
               >
@@ -1003,6 +1089,7 @@ export default function FrmQuanLyDanhMucPhong() {
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-[44px] text-sm"
                 disabled={!roomPagination.hasNextPage || loading}
                 onClick={() => setRoomPage((prev) => prev + 1)}
               >
@@ -1013,70 +1100,126 @@ export default function FrmQuanLyDanhMucPhong() {
           {loading ? (
             <div className="p-8 text-center text-gray-400">Đang tải...</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                  <tr>
-                    {[
-                      "Số phòng",
-                      "Tầng",
-                      "Loại",
-                      "Giá/đêm",
-                      "Trạng thái",
-                      "Mô tả",
-                      "",
-                    ].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {phongList.map((phong) => (
-                    <tr key={phong.soPhong} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-semibold">
-                        {phong.soPhong}
-                      </td>
-                      <td className="px-4 py-3">{phong.tang ?? "—"}</td>
-                      <td className="px-4 py-3">
-                        {phong.loaiPhong?.tenLoai ?? phong.idLoaiPhong}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-blue-700">
-                        {formatVND(Number(phong.giaPhong))}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={TINH_TRANG_BADGE[phong.tinhTrang]}>
-                          {TINH_TRANG_LABEL[phong.tinhTrang]}
-                        </Badge>
-                      </td>
-                      <td className="max-w-xs px-4 py-3 text-gray-500">
+            <>
+              <div className="space-y-3 px-4 pb-4 lg:hidden">
+                {phongList.map((phong) => (
+                  <div
+                    key={phong.soPhong}
+                    className="space-y-3 rounded-xl border border-slate-200 bg-white p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          Phòng {phong.soPhong}
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          {phong.loaiPhong?.tenLoai ?? phong.idLoaiPhong} • Tầng{" "}
+                          {phong.tang ?? "—"}
+                        </p>
+                      </div>
+                      <Badge variant={TINH_TRANG_BADGE[phong.tinhTrang]}>
+                        {TINH_TRANG_LABEL[phong.tinhTrang]}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-1 text-sm text-slate-700">
+                      <p>
+                        <span className="font-medium">Giá/đêm:</span>{" "}
+                        <span className="font-semibold text-blue-700">
+                          {formatVND(Number(phong.giaPhong))}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="font-medium">Mô tả:</span>{" "}
                         {phong.moTa ?? "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openEdit(phong)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-500 hover:text-red-700"
-                            onClick={() => handleDelete(phong.soPhong)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="ghost"
+                        className="min-h-[44px] gap-1 px-3 text-sm"
+                        onClick={() => openEdit(phong)}
+                      >
+                        <Pencil className="h-4 w-4" /> Sửa
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="min-h-[44px] gap-1 px-3 text-sm text-red-500 hover:text-red-700"
+                        onClick={() => handleDelete(phong.soPhong)}
+                      >
+                        <Trash2 className="h-4 w-4" /> Xóa
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                    <tr>
+                      {[
+                        "Số phòng",
+                        "Tầng",
+                        "Loại",
+                        "Giá/đêm",
+                        "Trạng thái",
+                        "Mô tả",
+                        "",
+                      ].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left">
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y">
+                    {phongList.map((phong) => (
+                      <tr key={phong.soPhong} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-semibold">
+                          {phong.soPhong}
+                        </td>
+                        <td className="px-4 py-3">{phong.tang ?? "—"}</td>
+                        <td className="px-4 py-3">
+                          {phong.loaiPhong?.tenLoai ?? phong.idLoaiPhong}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-blue-700">
+                          {formatVND(Number(phong.giaPhong))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={TINH_TRANG_BADGE[phong.tinhTrang]}>
+                            {TINH_TRANG_LABEL[phong.tinhTrang]}
+                          </Badge>
+                        </td>
+                        <td className="max-w-xs px-4 py-3 text-gray-500">
+                          {phong.moTa ?? "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openEdit(phong)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => handleDelete(phong.soPhong)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

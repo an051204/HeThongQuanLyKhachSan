@@ -186,11 +186,15 @@ export default function PartnerSettlementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="flex items-center gap-2 text-xl font-bold">
           <HandCoins className="h-5 w-5 text-amber-700" /> Công nợ đối tác
         </h1>
-        <Button variant="outline" className="gap-2" onClick={fetchData}>
+        <Button
+          variant="outline"
+          className="min-h-[44px] gap-2"
+          onClick={fetchData}
+        >
           <RefreshCw className="h-4 w-4" /> Làm mới
         </Button>
       </div>
@@ -209,6 +213,7 @@ export default function PartnerSettlementPage() {
               type="number"
               min={0}
               step="1000"
+              className="min-h-[44px]"
               value={collectForm.amount}
               onChange={(e) =>
                 setCollectForm((prev) =>
@@ -218,7 +223,7 @@ export default function PartnerSettlementPage() {
               placeholder="Số tiền thu"
             />
             <select
-              className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+              className="min-h-[44px] rounded-md border border-slate-200 px-3 text-sm"
               value={collectForm.method}
               onChange={(e) =>
                 setCollectForm((prev) =>
@@ -238,6 +243,7 @@ export default function PartnerSettlementPage() {
               ))}
             </select>
             <Input
+              className="min-h-[44px]"
               value={collectForm.note}
               onChange={(e) =>
                 setCollectForm((prev) =>
@@ -249,7 +255,7 @@ export default function PartnerSettlementPage() {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="min-h-[44px] bg-emerald-600 text-sm hover:bg-emerald-700"
                 loading={actionId === collectForm.settlementId}
                 onClick={handleConfirmCollectPayment}
               >
@@ -258,6 +264,7 @@ export default function PartnerSettlementPage() {
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-[44px] text-sm"
                 onClick={() => setCollectForm(null)}
               >
                 Hủy
@@ -274,7 +281,7 @@ export default function PartnerSettlementPage() {
               Tạo phiên đối soát công nợ
             </h2>
             <select
-              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
+              className="min-h-[44px] w-full rounded-md border border-slate-200 px-3 text-sm"
               value={form.idDoiTac}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, idDoiTac: e.target.value }))
@@ -331,7 +338,7 @@ export default function PartnerSettlementPage() {
               }
             />
             <Button
-              className="w-full bg-amber-600 hover:bg-amber-700"
+              className="min-h-[44px] w-full bg-amber-600 hover:bg-amber-700"
               loading={submitting}
               onClick={handleCreateSettlement}
             >
@@ -347,9 +354,10 @@ export default function PartnerSettlementPage() {
                 placeholder="Tìm theo mã đối soát/đối tác"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                className="min-h-[44px]"
               />
               <select
-                className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+                className="min-h-[44px] rounded-md border border-slate-200 px-3 text-sm"
                 value={statusFilter}
                 onChange={(e) =>
                   setStatusFilter(
@@ -379,67 +387,135 @@ export default function PartnerSettlementPage() {
                 Không có phiên công nợ nào.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
-                      <th className="px-3 py-2">Mã đối soát</th>
-                      <th className="px-3 py-2">Đối tác</th>
-                      <th className="px-3 py-2">Doanh thu</th>
-                      <th className="px-3 py-2">Còn phải thu</th>
-                      <th className="px-3 py-2">Trạng thái</th>
-                      <th className="px-3 py-2 text-right">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {settlements.map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-3 py-2">
-                          <p className="font-medium">{item.settlementCode}</p>
-                          <p className="text-xs text-gray-500">
+              <>
+                <div className="space-y-3 lg:hidden">
+                  {settlements.map((item) => (
+                    <div
+                      key={item.id}
+                      className="space-y-3 rounded-xl border border-slate-200 bg-white p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {item.settlementCode}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-600">
                             {formatDate(item.periodFrom)} -{" "}
                             {formatDate(item.periodTo)}
                           </p>
-                        </td>
-                        <td className="px-3 py-2">
-                          <p>{item.doiTac?.tenDoiTac ?? item.idDoiTac}</p>
-                          <p className="text-xs text-gray-500">
-                            Due: {item.dueDate ? formatDate(item.dueDate) : "-"}
-                          </p>
-                        </td>
-                        <td className="px-3 py-2">
-                          <p>{formatVND(Number(item.grossRevenue))}</p>
-                          <p className="text-xs text-gray-500">
-                            Chiết khấu: {item.commissionRate}% (
-                            {formatVND(Number(item.commissionAmount))})
-                          </p>
-                        </td>
-                        <td className="px-3 py-2 font-semibold text-amber-700">
-                          {formatVND(Number(item.outstandingAmount))}
-                        </td>
-                        <td className="px-3 py-2">
+                        </div>
+                        <span className="text-sm font-medium text-slate-700">
                           {STATUS_LABEL[item.status]}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {item.status !== "PAID" &&
-                          item.status !== "CANCELLED" ? (
-                            <Button
-                              size="sm"
-                              className="h-7 bg-emerald-600 px-2 text-xs hover:bg-emerald-700"
-                              loading={actionId === item.id}
-                              onClick={() => handleCollectPayment(item)}
-                            >
-                              Thu tiền
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-gray-400">-</span>
-                          )}
-                        </td>
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 text-sm text-slate-700">
+                        <p>
+                          <span className="font-medium">Đối tác:</span>{" "}
+                          {item.doiTac?.tenDoiTac ?? item.idDoiTac}
+                        </p>
+                        <p>
+                          <span className="font-medium">Hạn thu:</span>{" "}
+                          {item.dueDate ? formatDate(item.dueDate) : "-"}
+                        </p>
+                        <p>
+                          <span className="font-medium">Doanh thu:</span>{" "}
+                          {formatVND(Number(item.grossRevenue))}
+                        </p>
+                        <p>
+                          <span className="font-medium">Chiết khấu:</span>{" "}
+                          {item.commissionRate}% (
+                          {formatVND(Number(item.commissionAmount))})
+                        </p>
+                        <p className="font-semibold text-amber-700">
+                          Còn phải thu:{" "}
+                          {formatVND(Number(item.outstandingAmount))}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {item.status !== "PAID" &&
+                        item.status !== "CANCELLED" ? (
+                          <Button
+                            className="min-h-[44px] bg-emerald-600 px-3 text-sm hover:bg-emerald-700"
+                            loading={actionId === item.id}
+                            onClick={() => handleCollectPayment(item)}
+                          >
+                            Thu tiền
+                          </Button>
+                        ) : (
+                          <span className="inline-flex min-h-[44px] items-center text-sm text-gray-400">
+                            Không có thao tác
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-x-auto lg:block">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                        <th className="px-3 py-2">Mã đối soát</th>
+                        <th className="px-3 py-2">Đối tác</th>
+                        <th className="px-3 py-2">Doanh thu</th>
+                        <th className="px-3 py-2">Còn phải thu</th>
+                        <th className="px-3 py-2">Trạng thái</th>
+                        <th className="px-3 py-2 text-right">Thao tác</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y">
+                      {settlements.map((item) => (
+                        <tr key={item.id}>
+                          <td className="px-3 py-2">
+                            <p className="font-medium">{item.settlementCode}</p>
+                            <p className="text-xs text-gray-500">
+                              {formatDate(item.periodFrom)} -{" "}
+                              {formatDate(item.periodTo)}
+                            </p>
+                          </td>
+                          <td className="px-3 py-2">
+                            <p>{item.doiTac?.tenDoiTac ?? item.idDoiTac}</p>
+                            <p className="text-xs text-gray-500">
+                              Due:{" "}
+                              {item.dueDate ? formatDate(item.dueDate) : "-"}
+                            </p>
+                          </td>
+                          <td className="px-3 py-2">
+                            <p>{formatVND(Number(item.grossRevenue))}</p>
+                            <p className="text-xs text-gray-500">
+                              Chiết khấu: {item.commissionRate}% (
+                              {formatVND(Number(item.commissionAmount))})
+                            </p>
+                          </td>
+                          <td className="px-3 py-2 font-semibold text-amber-700">
+                            {formatVND(Number(item.outstandingAmount))}
+                          </td>
+                          <td className="px-3 py-2">
+                            {STATUS_LABEL[item.status]}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {item.status !== "PAID" &&
+                            item.status !== "CANCELLED" ? (
+                              <Button
+                                size="sm"
+                                className="h-7 bg-emerald-600 px-2 text-xs hover:bg-emerald-700"
+                                loading={actionId === item.id}
+                                onClick={() => handleCollectPayment(item)}
+                              >
+                                Thu tiền
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-gray-400">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
