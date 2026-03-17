@@ -64,6 +64,11 @@ const ROLE_COPY: Record<
     description:
       "Tập trung vào phòng cần dọn, phòng đã sẵn sàng và tiến độ hoàn thành.",
   },
+  KhachHang: {
+    title: "Thông tin đặt phòng của bạn",
+    description:
+      "Theo dõi các booking vừa tạo và lịch lưu trú của tài khoản khách hàng.",
+  },
 };
 
 function isSameDay(dateString?: string): boolean {
@@ -88,6 +93,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [cleaningRoom, setCleaningRoom] = useState<string | null>(null);
   const { success, error } = useAppToast();
+  const roleCopy = ROLE_COPY[user?.vaiTro as VaiTroNhanVien] ?? {
+    title: "Bảng điều khiển",
+    description:
+      "Tài khoản hiện tại không có cấu hình dashboard cho vai trò này.",
+  };
 
   const fetchData = useCallback(async () => {
     if (!user?.vaiTro) return;
@@ -226,11 +236,9 @@ export default function DashboardPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-cyan-200">
               Dashboard theo vai trò
             </p>
-            <h1 className="mt-2 text-3xl font-bold">
-              {ROLE_COPY[user.vaiTro].title}
-            </h1>
+            <h1 className="mt-2 text-3xl font-bold">{roleCopy.title}</h1>
             <p className="mt-3 max-w-2xl text-sm text-slate-200">
-              {ROLE_COPY[user.vaiTro].description}
+              {roleCopy.description}
             </p>
           </div>
 

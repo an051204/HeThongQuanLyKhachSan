@@ -128,8 +128,8 @@ export default function LoginPage() {
           {/* Ghi chú setup */}
           <p className="mt-6 text-center text-xs text-gray-400">
             Lần đầu sử dụng?{" "}
-            <a href="/setup" className="text-blue-600 hover:underline">
-              Tạo tài khoản quản lý
+            <a href="/register" className="text-blue-600 hover:underline">
+              Tạo tài khoản khách hàng
             </a>
           </p>
         </div>

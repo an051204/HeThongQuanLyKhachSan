@@ -4,6 +4,7 @@ import { Router } from "express";
 import { body, param } from "express-validator";
 import {
   authenticate,
+  authenticateOptional,
   requireCheckoutPermission,
   requireRole,
 } from "../middleware/authMiddleware";
@@ -17,6 +18,7 @@ import { checkInBookingById } from "../controllers/checkinController";
 import {
   getBookingById,
   getBookingHistory,
+  getMyBookings,
 } from "../controllers/bookingController";
 
 const router = Router();
@@ -42,33 +44,25 @@ const createBookingValidation = [
     .withMessage("totalPrice là bắt buộc.")
     .isFloat({ min: 1 })
     .withMessage("totalPrice phải là số dương."),
-  body("customer").isObject().withMessage("customer là bắt buộc."),
-  body("customer.hoTen")
+  body("guestName")
     .notEmpty()
-    .withMessage("customer.hoTen là bắt buộc.")
+    .withMessage("guestName là bắt buộc.")
     .isString()
     .trim(),
-  body("customer.sdt")
+  body("guestPhone")
     .notEmpty()
-    .withMessage("customer.sdt là bắt buộc.")
+    .withMessage("guestPhone là bắt buộc.")
     .isString()
     .trim(),
-  body("customer.email")
+  body("guestEmail")
     .notEmpty()
-    .withMessage("customer.email là bắt buộc.")
+    .withMessage("guestEmail là bắt buộc.")
     .isEmail()
-    .withMessage("customer.email không hợp lệ.")
+    .withMessage("guestEmail không hợp lệ.")
     .normalizeEmail(),
-  body("customer.cccd_passport")
-    .notEmpty()
-    .withMessage("customer.cccd_passport là bắt buộc.")
-    .isString()
-    .trim(),
-  body("customer.diaChi")
-    .notEmpty()
-    .withMessage("customer.diaChi là bắt buộc.")
-    .isString()
-    .trim(),
+  body("customer").optional().isObject(),
+  body("customer.cccd_passport").optional().isString().trim(),
+  body("customer.diaChi").optional().isString().trim(),
   body("paymentMethod")
     .optional()
     .isIn(["QR", "CARD"])
@@ -107,7 +101,12 @@ const bookingIdValidation = [
 ];
 
 // POST /api/bookings/create
-router.post("/create", createBookingValidation, createBookingAndPayDeposit);
+router.post(
+  "/create",
+  authenticateOptional,
+  createBookingValidation,
+  createBookingAndPayDeposit,
+);
 
 // POST /api/bookings/momo-ipn
 router.post("/momo-ipn", handleBookingMomoIpn);
@@ -122,6 +121,9 @@ router.get(
   requireRole("LeTan", "QuanLy"),
   getBookingHistory,
 );
+
+// GET /api/bookings/my
+router.get("/my", authenticate, requireRole("KhachHang"), getMyBookings);
 
 // GET /api/bookings/:id
 router.get(

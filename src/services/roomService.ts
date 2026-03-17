@@ -42,6 +42,13 @@ export interface TimPhongTrongQueryInput {
   tienNghi?: string;
 }
 
+export interface GoiYPhongQueryInput {
+  ngayDen?: string;
+  ngayDi?: string;
+  limitLoai?: string;
+  limitPhong?: string;
+}
+
 const ROOM_NUMBER_PATTERN = /^\d{3}$/;
 
 function parseNonNegativeNumber(value: string | undefined, field: string) {
@@ -249,6 +256,126 @@ export async function timPhongTrong(input: TimPhongTrongQueryInput) {
     orderBy: { soPhong: "asc" },
   });
   return { success: true, data: phongList };
+}
+
+// ── Gợi ý loại phòng được đặt nhiều + phòng nổi bật ──────────
+export async function layGoiYPhong(input: GoiYPhongQueryInput = {}) {
+  const { ngayDen, ngayDi, limitLoai, limitPhong } = input;
+
+  if (ngayDen && ngayDi && new Date(ngayDi) <= new Date(ngayDen)) {
+    throw new AppError(400, "Ngày đi phải sau ngày đến.");
+  }
+
+  const limitLoaiValue = Math.min(
+    parsePositiveInteger(limitLoai, "limitLoai") ?? 4,
+    8,
+  );
+  const limitPhongValue = Math.min(
+    parsePositiveInteger(limitPhong, "limitPhong") ?? 6,
+    12,
+  );
+
+  const [allRooms, bookingCountsByRoom] = await Promise.all([
+    prisma.phong.findMany({
+      include: { loaiPhong: true },
+      orderBy: [{ tinhTrang: "asc" }, { soPhong: "asc" }],
+    }),
+    prisma.phieuDatPhong.groupBy({
+      by: ["soPhong"],
+      where: { trangThai: { not: "DaHuy" } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const roomBookingMap = new Map<string, number>(
+    bookingCountsByRoom.map((item) => [item.soPhong, item._count._all]),
+  );
+
+  type TypeAggregate = {
+    idLoaiPhong: string;
+    tenLoai: string;
+    soLuotDat: number;
+    giaThamKhao: number;
+    sucChua?: number;
+    soGiuong?: number;
+    dienTich?: number;
+    tienNghi?: string | null;
+    albumAnh?: string | null;
+    soPhongTrong: number;
+  };
+
+  const typeAggregateMap = new Map<string, TypeAggregate>();
+
+  for (const room of allRooms) {
+    const currentBookingCount = roomBookingMap.get(room.soPhong) ?? 0;
+    const currentPrice = Number(room.giaPhong);
+    const existing = typeAggregateMap.get(room.idLoaiPhong);
+
+    if (!existing) {
+      typeAggregateMap.set(room.idLoaiPhong, {
+        idLoaiPhong: room.idLoaiPhong,
+        tenLoai: room.loaiPhong.tenLoai,
+        soLuotDat: currentBookingCount,
+        giaThamKhao: currentPrice,
+        sucChua: room.loaiPhong.sucChua,
+        soGiuong: room.loaiPhong.soGiuong,
+        dienTich: room.loaiPhong.dienTich ?? undefined,
+        tienNghi: room.loaiPhong.tienNghi,
+        albumAnh: room.loaiPhong.albumAnh,
+        soPhongTrong: room.tinhTrang === "Trong" ? 1 : 0,
+      });
+      continue;
+    }
+
+    existing.soLuotDat += currentBookingCount;
+    existing.giaThamKhao = Math.min(existing.giaThamKhao, currentPrice);
+    if (room.tinhTrang === "Trong") {
+      existing.soPhongTrong += 1;
+    }
+  }
+
+  const topLoaiPhong = Array.from(typeAggregateMap.values())
+    .sort((a, b) => {
+      if (b.soLuotDat !== a.soLuotDat) return b.soLuotDat - a.soLuotDat;
+      if (b.soPhongTrong !== a.soPhongTrong)
+        return b.soPhongTrong - a.soPhongTrong;
+      return a.giaThamKhao - b.giaThamKhao;
+    })
+    .slice(0, limitLoaiValue);
+
+  const topTypeIds = new Set(topLoaiPhong.map((item) => item.idLoaiPhong));
+  const availableRooms = allRooms.filter((room) => room.tinhTrang === "Trong");
+
+  const sortFeaturedRooms = (
+    a: (typeof availableRooms)[number],
+    b: (typeof availableRooms)[number],
+  ) => {
+    const bookingA = roomBookingMap.get(a.soPhong) ?? 0;
+    const bookingB = roomBookingMap.get(b.soPhong) ?? 0;
+    if (bookingB !== bookingA) return bookingB - bookingA;
+    return Number(b.giaPhong) - Number(a.giaPhong);
+  };
+
+  const featuredFromTopType = availableRooms
+    .filter((room) => topTypeIds.has(room.idLoaiPhong))
+    .sort(sortFeaturedRooms);
+
+  const featuredFallback = availableRooms
+    .filter((room) => !topTypeIds.has(room.idLoaiPhong))
+    .sort(sortFeaturedRooms);
+
+  const phongNoiBat = [...featuredFromTopType, ...featuredFallback].slice(
+    0,
+    limitPhongValue,
+  );
+
+  return {
+    success: true,
+    data: {
+      topLoaiPhong,
+      phongNoiBat,
+    },
+  };
 }
 
 // ── Chi tiết một phòng ────────────────────────────────────────

@@ -21,6 +21,7 @@ import invoiceRoutes from "./routes/invoiceRoutes";
 import statsRoutes from "./routes/statsRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
 import bookingMomoRoutes from "./routes/bookingMomoRoutes";
+import accountingRoutes from "./routes/accountingRoutes";
 
 const app = express();
 const requestBodyLimit = process.env.REQUEST_BODY_LIMIT ?? "20mb";
@@ -84,6 +85,14 @@ app.use(
   authenticate,
   requireRole("LeTan", "QuanLy", "KeToan"),
   dichVuRoutes,
+);
+
+// Nghiệp vụ kế toán chuyên sâu: chỉ kế toán và quản lý
+app.use(
+  "/api/ke-toan",
+  authenticate,
+  requireRole("KeToan", "QuanLy"),
+  accountingRoutes,
 );
 
 // Đối tác B2B: chỉ QuanLy quản lý

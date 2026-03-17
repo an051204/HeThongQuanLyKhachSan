@@ -11,11 +11,26 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 export interface AuthUser {
-  idNhanVien: string;
+  idNhanVien?: string;
+  userId?: string;
   taiKhoan: string;
   hoTen: string;
   vaiTro: string;
+  sdt?: string;
+  email?: string;
 }
+
+type AuthTokenPayload = jwt.JwtPayload & {
+  idNhanVien?: string;
+  idKhachHang?: string;
+  userId?: string;
+  id?: string;
+  taiKhoan?: string;
+  hoTen?: string;
+  vaiTro?: string;
+  sdt?: string;
+  email?: string;
+};
 
 function normalizeRole(role: string | undefined): string {
   return (role ?? "").trim().toLowerCase();
@@ -31,11 +46,36 @@ declare global {
   namespace Express {
     interface Request {
       user?: AuthUser;
+      authUserId?: string | null;
     }
   }
 }
 
 const JWT_SECRET = process.env.JWT_SECRET!;
+
+function extractBearerToken(authorization?: string): string | undefined {
+  if (!authorization?.startsWith("Bearer ")) {
+    return undefined;
+  }
+
+  return authorization.slice(7);
+}
+
+function resolveAuthUserId(payload: AuthTokenPayload): string | null {
+  const candidate =
+    payload.userId ?? payload.idKhachHang ?? payload.idNhanVien ?? payload.id;
+
+  if (!candidate || typeof candidate !== "string") {
+    return null;
+  }
+
+  const trimmed = candidate.trim();
+  return trimmed ? trimmed : null;
+}
+
+function decodeJwtToken(token: string): AuthTokenPayload {
+  return jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
+}
 
 /** Middleware: xác thực JWT. Gắn req.user nếu hợp lệ. */
 export function authenticate(
@@ -43,10 +83,7 @@ export function authenticate(
   res: Response,
   next: NextFunction,
 ): void {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : undefined;
+  const token = extractBearerToken(req.headers.authorization);
 
   if (!token) {
     res.status(401).json({
@@ -57,8 +94,53 @@ export function authenticate(
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AuthUser;
-    req.user = payload;
+    const payload = decodeJwtToken(token);
+    req.authUserId = resolveAuthUserId(payload);
+    req.user = {
+      idNhanVien: payload.idNhanVien,
+      userId: payload.userId,
+      taiKhoan: payload.taiKhoan ?? "",
+      hoTen: payload.hoTen ?? "",
+      vaiTro: payload.vaiTro ?? "",
+      sdt: payload.sdt,
+      email: payload.email,
+    };
+    next();
+  } catch {
+    res.status(401).json({
+      success: false,
+      message: "Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.",
+    });
+  }
+}
+
+/** Middleware: xác thực JWT tùy chọn. Không có token vẫn cho đi tiếp. */
+export function authenticateOptional(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const token = extractBearerToken(req.headers.authorization);
+
+  if (!token) {
+    req.user = undefined;
+    req.authUserId = null;
+    next();
+    return;
+  }
+
+  try {
+    const payload = decodeJwtToken(token);
+    req.authUserId = resolveAuthUserId(payload);
+    req.user = {
+      idNhanVien: payload.idNhanVien,
+      userId: payload.userId,
+      taiKhoan: payload.taiKhoan ?? "",
+      hoTen: payload.hoTen ?? "",
+      vaiTro: payload.vaiTro ?? "",
+      sdt: payload.sdt,
+      email: payload.email,
+    };
     next();
   } catch {
     res.status(401).json({

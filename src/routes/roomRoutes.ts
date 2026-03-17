@@ -11,6 +11,7 @@ import {
   deletePhong,
   cleanRoom,
   searchPhongTrong,
+  getRoomSuggestions,
 } from "../controllers/roomController";
 
 const router = Router();
@@ -38,6 +39,9 @@ router.get("/", listPhong);
 
 // GET  /api/phong/trong    — tìm phòng trống theo ngày (?ngayDen=&ngayDi=)
 router.get("/trong", searchPhongTrong);
+
+// GET  /api/phong/goi-y    — loại phòng đặt nhiều + phòng nổi bật
+router.get("/goi-y", getRoomSuggestions);
 
 // GET  /api/phong/:soPhong — chi tiết
 router.get("/:soPhong", [param("soPhong").notEmpty()], getPhong);

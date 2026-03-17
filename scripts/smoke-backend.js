@@ -3,11 +3,18 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-const apiBaseUrl = (
+const cliBaseUrl = process.argv[2];
+
+const rawApiBaseUrl = (
+  cliBaseUrl ??
   process.env.SMOKE_BASE_URL ??
   process.env.BACKEND_BASE_URL ??
   "http://localhost:4000/api"
 ).replace(/\/+$/, "");
+
+const apiBaseUrl = /\/api$/i.test(rawApiBaseUrl)
+  ? rawApiBaseUrl
+  : `${rawApiBaseUrl}/api`;
 
 const managerAccount = {
   hoTen: process.env.SMOKE_MANAGER_NAME ?? "Quan Ly Smoke Test",
@@ -46,6 +53,10 @@ const state = {
   tempFilterRoomNumber: null,
   tempLoaiPhongId: null,
   tempStaffUsernames: [],
+  tempPartnerId: null,
+  tempSettlementId: null,
+  tempCashShiftId: null,
+  tempVoucherIds: [],
 };
 
 function assert(condition, message) {
@@ -73,6 +84,22 @@ function makeSmokeKey() {
   return `${Date.now()}${Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, "0")}`;
+}
+
+async function findAvailableRoomNumberByFloor(floor, skip = []) {
+  for (let unit = 1; unit <= 99; unit += 1) {
+    const soPhong = `${floor}${String(unit).padStart(2, "0")}`;
+    if (skip.includes(soPhong)) continue;
+    const exists = await prisma.phong.findUnique({
+      where: { soPhong },
+      select: { soPhong: true },
+    });
+    if (!exists) return soPhong;
+  }
+
+  throw new Error(
+    `Không tìm được số phòng trống 3 chữ số cho tầng ${floor} trong smoke test.`,
+  );
 }
 
 async function apiRequest({
@@ -171,6 +198,40 @@ async function ensureStaffAccount(account) {
 }
 
 async function cleanupSmokeData(state) {
+  if (state.tempVoucherIds.length > 0) {
+    await prisma.cashVoucher.deleteMany({
+      where: { id: { in: state.tempVoucherIds } },
+    });
+  }
+
+  if (state.tempSettlementId) {
+    await prisma.cashVoucher.deleteMany({
+      where: { relatedSettlementId: state.tempSettlementId },
+    });
+    await prisma.partnerSettlement.deleteMany({
+      where: { id: state.tempSettlementId },
+    });
+  }
+
+  if (state.tempCashShiftId) {
+    await prisma.cashVoucher.deleteMany({
+      where: { shiftId: state.tempCashShiftId },
+    });
+    await prisma.cashShift.deleteMany({ where: { id: state.tempCashShiftId } });
+  }
+
+  if (state.tempPartnerId) {
+    await prisma.cashVoucher.deleteMany({
+      where: { doiTacId: state.tempPartnerId },
+    });
+    await prisma.partnerSettlement.deleteMany({
+      where: { idDoiTac: state.tempPartnerId },
+    });
+    await prisma.doiTac.deleteMany({
+      where: { idDoiTac: state.tempPartnerId },
+    });
+  }
+
   if (state.bookingId) {
     const invoices = await prisma.hoaDon.findMany({
       where: { maDatPhong: state.bookingId },
@@ -231,7 +292,7 @@ async function cleanupSmokeData(state) {
 async function main() {
   const verified = [];
   const smokeKey = makeSmokeKey();
-  state.tempRoomNumber = `SMK${smokeKey.slice(-5)}`;
+  state.tempRoomNumber = await findAvailableRoomNumberByFloor(9);
 
   await ensureStaffAccount(managerAccount);
   await ensureStaffAccount(receptionistAccount);
@@ -473,7 +534,9 @@ async function main() {
   );
   verified.push("manager_room_type_parser_gallery");
 
-  state.tempFilterRoomNumber = `SMF${smokeKey.slice(-5)}`;
+  state.tempFilterRoomNumber = await findAvailableRoomNumberByFloor(8, [
+    state.tempRoomNumber,
+  ]);
   const createFilterRoom = await apiRequest({
     method: "POST",
     path: "/phong",
@@ -768,6 +831,27 @@ async function main() {
   );
   verified.push("accountant_invoice_pay");
 
+  const finalizeCheckout = await apiRequest({
+    method: "POST",
+    path: "/checkout/offline",
+    token: receptionistToken,
+    body: {
+      invoiceId,
+      paymentMethod: "CASH",
+    },
+    expectedStatus: 200,
+  });
+  const finalizeCheckoutData = requireSuccess(
+    finalizeCheckout,
+    "receptionist checkout offline finalize",
+  );
+  assert(
+    finalizeCheckoutData.booking?.trangThai === "DaCheckOut" &&
+      finalizeCheckoutData.room?.tinhTrang === "CanDonDep",
+    "Checkout offline finalize did not move booking/room to expected state.",
+  );
+  verified.push("receptionist_checkout_offline_finalize");
+
   const exportInvoice = await apiRequest({
     path: `/hoa-don/${invoiceId}/xuat`,
     token: accountantToken,
@@ -809,6 +893,242 @@ async function main() {
     "Manager partner list did not return an array.",
   );
   verified.push("manager_partner_list");
+
+  const accountantOverview = await apiRequest({
+    path: "/ke-toan/tong-quan",
+    token: accountantToken,
+    expectedStatus: 200,
+  });
+  const accountantOverviewData = requireSuccess(
+    accountantOverview,
+    "accountant accounting overview",
+  );
+  assert(
+    accountantOverviewData.thuChiThangNay &&
+      typeof accountantOverviewData.thuChiThangNay.tongThu === "number",
+    "Accounting overview payload is incomplete.",
+  );
+  verified.push("accountant_overview");
+
+  await apiRequest({
+    path: "/ke-toan/tong-quan",
+    token: receptionistToken,
+    expectedStatus: 403,
+  });
+  verified.push("accounting_rbac_forbidden_receptionist");
+
+  const accountantPartnerList = await apiRequest({
+    path: "/ke-toan/doi-tac",
+    token: accountantToken,
+    expectedStatus: 200,
+  });
+  assert(
+    Array.isArray(
+      requireSuccess(accountantPartnerList, "accountant partner list"),
+    ),
+    "Accountant partner list did not return array.",
+  );
+  verified.push("accountant_partner_list");
+
+  const currentShiftResponse = await apiRequest({
+    path: "/ke-toan/ca-thu-ngan/hien-tai",
+    token: accountantToken,
+    expectedStatus: 200,
+  });
+  const currentShiftData = requireSuccess(
+    currentShiftResponse,
+    "accountant current cash shift",
+  );
+
+  let smokeShiftId = null;
+  let smokeShiftOpeningCash = 0;
+
+  if (!currentShiftData) {
+    const openShiftResponse = await apiRequest({
+      method: "POST",
+      path: "/ke-toan/ca-thu-ngan/mo",
+      token: accountantToken,
+      body: {
+        openingCash: 123456,
+        note: `Smoke open shift ${smokeKey}`,
+      },
+      expectedStatus: 201,
+    });
+    const openShiftData = requireSuccess(
+      openShiftResponse,
+      "accountant open shift",
+    );
+    smokeShiftId = openShiftData.id;
+    smokeShiftOpeningCash = Number(openShiftData.openingCash || 0);
+    state.tempCashShiftId = smokeShiftId;
+    verified.push("accountant_open_shift");
+  } else {
+    verified.push("accountant_current_shift");
+  }
+
+  const voucherDraftResponse = await apiRequest({
+    method: "POST",
+    path: "/ke-toan/phieu-thu-chi",
+    token: accountantToken,
+    body: {
+      type: "THU",
+      method: "BANK_TRANSFER",
+      amount: 111000,
+      description: `Smoke voucher ${smokeKey}`,
+      category: "SmokeTest",
+      referenceNo: `SMOKE-${smokeKey}`,
+      note: "Created by smoke test",
+      shiftId: smokeShiftId,
+    },
+    expectedStatus: 201,
+  });
+  const voucherDraftData = requireSuccess(
+    voucherDraftResponse,
+    "accountant create voucher",
+  );
+  assert(
+    voucherDraftData.status === "DRAFT",
+    "New voucher should be DRAFT before confirmation.",
+  );
+  state.tempVoucherIds.push(voucherDraftData.id);
+  verified.push("accountant_create_voucher");
+
+  const confirmVoucherResponse = await apiRequest({
+    method: "PATCH",
+    path: `/ke-toan/phieu-thu-chi/${voucherDraftData.id}/xac-nhan`,
+    token: accountantToken,
+    expectedStatus: 200,
+  });
+  const confirmVoucherData = requireSuccess(
+    confirmVoucherResponse,
+    "accountant confirm voucher",
+  );
+  assert(
+    confirmVoucherData.status === "CONFIRMED",
+    "Voucher confirm endpoint did not update status.",
+  );
+  verified.push("accountant_confirm_voucher");
+
+  const voucherListResponse = await apiRequest({
+    path: `/ke-toan/phieu-thu-chi?page=1&pageSize=5&search=${voucherDraftData.voucherNo}`,
+    token: accountantToken,
+    expectedStatus: 200,
+  });
+  const voucherListData = requireSuccess(
+    voucherListResponse,
+    "accountant voucher list",
+  );
+  assert(
+    Array.isArray(voucherListData.items) &&
+      voucherListData.items.some((item) => item.id === voucherDraftData.id),
+    "Voucher list does not contain created voucher.",
+  );
+  verified.push("accountant_voucher_list");
+
+  if (smokeShiftId) {
+    const closeShiftResponse = await apiRequest({
+      method: "POST",
+      path: `/ke-toan/ca-thu-ngan/${smokeShiftId}/dong`,
+      token: accountantToken,
+      body: {
+        actualCash: smokeShiftOpeningCash,
+        note: "Smoke close shift",
+      },
+      expectedStatus: 200,
+    });
+    const closeShiftData = requireSuccess(
+      closeShiftResponse,
+      "accountant close shift",
+    );
+    assert(closeShiftData.status === "CLOSED", "Cash shift was not closed.");
+    verified.push("accountant_close_shift");
+  }
+
+  const tempPartner = await apiRequest({
+    method: "POST",
+    path: "/doi-tac",
+    token: managerToken,
+    body: {
+      tenDoiTac: `Smoke Partner ${smokeKey.slice(-6)}`,
+      email: `smoke-partner-${smokeKey}@example.com`,
+      sdt: `09${smokeKey.slice(-8)}`,
+      diaChi: "Smoke Address",
+      tyLeChietKhau: 10,
+      ghiChu: "Created by smoke test",
+    },
+    expectedStatus: 201,
+  });
+  const tempPartnerData = requireSuccess(
+    tempPartner,
+    "manager create smoke partner",
+  );
+  state.tempPartnerId = tempPartnerData.idDoiTac;
+  verified.push("manager_create_partner");
+
+  const settlementCreateResponse = await apiRequest({
+    method: "POST",
+    path: "/ke-toan/cong-no-doi-tac",
+    token: accountantToken,
+    body: {
+      idDoiTac: state.tempPartnerId,
+      periodFrom: todayIsoDate(-1),
+      periodTo: todayIsoDate(0),
+      commissionRate: 10,
+      note: "Smoke settlement",
+    },
+    expectedStatus: 201,
+  });
+  const settlementCreateData = requireSuccess(
+    settlementCreateResponse,
+    "accountant create settlement",
+  );
+  state.tempSettlementId = settlementCreateData.id;
+  assert(
+    settlementCreateData.settlementCode,
+    "Settlement create did not return settlementCode.",
+  );
+  verified.push("accountant_create_settlement");
+
+  const collectSettlementResponse = await apiRequest({
+    method: "POST",
+    path: `/ke-toan/cong-no-doi-tac/${state.tempSettlementId}/thu-tien`,
+    token: accountantToken,
+    body: {
+      amount: 1,
+      method: "BANK_TRANSFER",
+      note: "Smoke collect",
+      referenceNo: `SMOKE-COLLECT-${smokeKey}`,
+    },
+    expectedStatus: [201, 400],
+  });
+  if (collectSettlementResponse.status === 201) {
+    const collectData = requireSuccess(
+      collectSettlementResponse,
+      "accountant collect settlement",
+    );
+    if (collectData.voucher?.id) {
+      state.tempVoucherIds.push(collectData.voucher.id);
+    }
+  }
+  verified.push("accountant_collect_settlement");
+
+  const settlementListResponse = await apiRequest({
+    path: `/ke-toan/cong-no-doi-tac?page=1&pageSize=10&search=${settlementCreateData.settlementCode.slice(-6)}`,
+    token: accountantToken,
+    expectedStatus: 200,
+  });
+  const settlementListData = requireSuccess(
+    settlementListResponse,
+    "accountant settlement list",
+  );
+  assert(
+    Array.isArray(settlementListData.items) &&
+      settlementListData.items.some(
+        (item) => item.id === state.tempSettlementId,
+      ),
+    "Settlement list does not contain created settlement.",
+  );
+  verified.push("accountant_settlement_list");
 
   console.log(
     JSON.stringify(

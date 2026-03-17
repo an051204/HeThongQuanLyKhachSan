@@ -73,7 +73,7 @@ export async function taoDatPhong(input: TaoDatPhongInput) {
   // ── Bước 2: Kiểm tra khách hàng tồn tại ──────────────────
   const khachHang = await prisma.khachHang.findUnique({
     where: { idKhachHang },
-    select: { idKhachHang: true, hoTen: true },
+    select: { idKhachHang: true, hoTen: true, sdt: true, email: true },
   });
   if (!khachHang) {
     throw new AppError(404, `Không tìm thấy khách hàng với ID: ${idKhachHang}`);
@@ -121,6 +121,10 @@ export async function taoDatPhong(input: TaoDatPhongInput) {
   const phieuDatPhong = await prisma.$transaction(async (tx) => {
     const phieuMoi = await tx.phieuDatPhong.create({
       data: {
+        userId: null,
+        guestName: khachHang.hoTen,
+        guestPhone: khachHang.sdt,
+        guestEmail: khachHang.email,
         idKhachHang,
         soPhong,
         ngayDen: dateNgayDen,
@@ -293,6 +297,38 @@ export async function chiTietDatPhongTheoBookingRef(bookingRef: string) {
   }
 
   return { success: true, data: phieu };
+}
+
+// ── Danh sách booking của tài khoản khách hàng hiện tại ─────
+export async function danhSachDatPhongCuaToi(userId: string) {
+  const items = await prisma.phieuDatPhong.findMany({
+    where: { userId },
+    include: {
+      khachHang: {
+        select: {
+          hoTen: true,
+          sdt: true,
+          email: true,
+        },
+      },
+      phong: {
+        include: {
+          loaiPhong: {
+            select: {
+              tenLoai: true,
+            },
+          },
+        },
+      },
+      hoaDon: true,
+    },
+    orderBy: [{ thoiGianDat: "desc" }],
+  });
+
+  return {
+    success: true,
+    data: items,
+  };
 }
 
 // ── Lịch sử check-in/check-out 30 ngày gần nhất ─────────────

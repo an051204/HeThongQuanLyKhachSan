@@ -67,6 +67,12 @@ export default function BookingResultPage({
           Quay lại đặt phòng
         </a>
         <a
+          href="/booking/my"
+          className="flex-1 rounded-lg bg-emerald-600 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700"
+        >
+          Xem phòng đã đặt
+        </a>
+        <a
           href="/"
           className="flex-1 rounded-lg bg-slate-200 px-4 py-2 text-center text-sm font-semibold text-slate-800 hover:bg-slate-300"
         >

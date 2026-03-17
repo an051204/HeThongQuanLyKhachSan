@@ -5,10 +5,11 @@ import { body } from "express-validator";
 import {
   login,
   getMe,
+  updateMe,
   register,
+  registerCustomer,
   changePassword,
   listNhanVien,
-  setup,
 } from "../controllers/authController";
 import { authenticate, requireRole } from "../middleware/authMiddleware";
 
@@ -28,9 +29,9 @@ router.post(
   login,
 );
 
-// POST /api/auth/setup — khởi tạo admin đầu tiên (không cần auth, tự block nếu đã có NV)
+// POST /api/auth/register-customer — đăng ký khách hàng public
 router.post(
-  "/setup",
+  "/register-customer",
   [
     body("hoTen")
       .notEmpty()
@@ -39,18 +40,40 @@ router.post(
       .trim(),
     body("taiKhoan")
       .notEmpty()
-      .withMessage("Tài khoản là bắt buộc.")
+      .withMessage("Email/Tài khoản là bắt buộc.")
       .isString()
       .trim(),
     body("matKhau")
       .isLength({ min: 6 })
       .withMessage("Mật khẩu phải có ít nhất 6 ký tự."),
+    body("sdt")
+      .optional()
+      .isString()
+      .trim()
+      .matches(/^(0|\+84)[0-9]{8,9}$/)
+      .withMessage("Số điện thoại không hợp lệ."),
   ],
-  setup,
+  registerCustomer,
 );
 
 // GET /api/auth/me — thông tin người đang đăng nhập
 router.get("/me", authenticate, getMe);
+
+// PATCH /api/auth/me — cập nhật email/sdt cá nhân
+router.patch(
+  "/me",
+  authenticate,
+  [
+    body("email").optional().isEmail().withMessage("Email không hợp lệ."),
+    body("sdt")
+      .optional()
+      .isString()
+      .trim()
+      .matches(/^(0|\+84)[0-9]{8,9}$/)
+      .withMessage("Số điện thoại không hợp lệ."),
+  ],
+  updateMe,
+);
 
 // POST /api/auth/register — tạo nhân viên mới (QuanLy only, không tạo thêm QuanLy)
 router.post(
