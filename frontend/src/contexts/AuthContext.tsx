@@ -28,6 +28,7 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (input: LoginInput) => Promise<void>;
   logout: () => void;
+  updateCurrentUser: (payload: Partial<NhanVien>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -75,6 +76,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(USER_KEY);
   }, []);
 
+  const updateCurrentUser = useCallback((payload: Partial<NhanVien>): void => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...payload };
+      localStorage.setItem(USER_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -84,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         logout,
+        updateCurrentUser,
       }}
     >
       {children}

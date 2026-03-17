@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { taoDatPhongVaLayLinkMoMo } from "@/lib/api";
 import { useAppToast } from "@/hooks/useAppToast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface RoomOption {
   id: string;
@@ -18,6 +19,44 @@ const ROOM_OPTIONS: RoomOption[] = [
 
 const DEPOSIT_RATE = 0.3;
 
+interface JwtPayloadLike {
+  userId?: string;
+  idKhachHang?: string;
+  idNhanVien?: string;
+  taiKhoan?: string;
+  hoTen?: string;
+  name?: string;
+  fullName?: string;
+  sdt?: string;
+  phone?: string;
+  email?: string;
+}
+
+interface GuestContactForm {
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
+}
+
+function parseJwtPayload(token: string | null): JwtPayloadLike | null {
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const payloadBase64 = token.split(".")[1];
+    if (!payloadBase64) return null;
+
+    const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const decoded = atob(padded);
+
+    return JSON.parse(decoded) as JwtPayloadLike;
+  } catch {
+    return null;
+  }
+}
+
 function formatVnd(value: number): string {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -31,6 +70,8 @@ function toDateInputValue(date: Date): string {
 }
 
 export default function BookingForm() {
+  const { user, token, isAuthenticated } = useAuth();
+
   const tomorrow = useMemo(() => {
     const next = new Date();
     next.setDate(next.getDate() + 1);
@@ -47,12 +88,10 @@ export default function BookingForm() {
   const [checkInDate, setCheckInDate] = useState<string>(tomorrow);
   const [checkOutDate, setCheckOutDate] = useState<string>(twoDaysLater);
 
-  const [customer, setCustomer] = useState({
-    hoTen: "",
-    sdt: "",
-    email: "",
-    cccd_passport: "",
-    diaChi: "",
+  const [guest, setGuest] = useState<GuestContactForm>({
+    guestName: "",
+    guestPhone: "",
+    guestEmail: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -82,13 +121,48 @@ export default function BookingForm() {
 
   const canSubmit =
     !loading &&
-    Boolean(customer.hoTen.trim()) &&
-    Boolean(customer.sdt.trim()) &&
-    Boolean(customer.email.trim()) &&
-    Boolean(customer.cccd_passport.trim()) &&
-    Boolean(customer.diaChi.trim()) &&
+    Boolean(guest.guestName.trim()) &&
+    Boolean(guest.guestPhone.trim()) &&
+    Boolean(guest.guestEmail.trim()) &&
     nights > 0 &&
     totalPrice > 0;
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const tokenPayload = parseJwtPayload(token);
+
+    const fallbackName =
+      user?.hoTen?.trim() ||
+      tokenPayload?.hoTen?.trim() ||
+      tokenPayload?.name?.trim() ||
+      tokenPayload?.fullName?.trim() ||
+      "";
+
+    const fallbackPhone =
+      user?.sdt?.trim() ||
+      tokenPayload?.sdt?.trim() ||
+      tokenPayload?.phone?.trim() ||
+      "";
+
+    const taiKhoanAsEmail = user?.taiKhoan?.includes("@")
+      ? user.taiKhoan.trim()
+      : "";
+
+    const fallbackEmail =
+      user?.email?.trim() ||
+      tokenPayload?.email?.trim() ||
+      tokenPayload?.taiKhoan?.trim() ||
+      taiKhoanAsEmail;
+
+    setGuest((prev) => ({
+      guestName: prev.guestName || fallbackName,
+      guestPhone: prev.guestPhone || fallbackPhone,
+      guestEmail: prev.guestEmail || fallbackEmail,
+    }));
+  }, [isAuthenticated, token, user]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -106,7 +180,14 @@ export default function BookingForm() {
         checkInDate,
         checkOutDate,
         totalPrice,
-        customer,
+        guestName: guest.guestName,
+        guestPhone: guest.guestPhone,
+        guestEmail: guest.guestEmail,
+        customer: {
+          hoTen: guest.guestName,
+          sdt: guest.guestPhone,
+          email: guest.guestEmail,
+        },
         note: `Khach tu dat phong qua form BookingForm (room ${roomId}).`,
       });
 
@@ -194,9 +275,9 @@ export default function BookingForm() {
               Họ tên
             </label>
             <input
-              value={customer.hoTen}
+              value={guest.guestName}
               onChange={(e) =>
-                setCustomer((prev) => ({ ...prev, hoTen: e.target.value }))
+                setGuest((prev) => ({ ...prev, guestName: e.target.value }))
               }
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-cyan-500 focus:ring-2"
               placeholder="Nguyen Van A"
@@ -209,9 +290,9 @@ export default function BookingForm() {
               Số điện thoại
             </label>
             <input
-              value={customer.sdt}
+              value={guest.guestPhone}
               onChange={(e) =>
-                setCustomer((prev) => ({ ...prev, sdt: e.target.value }))
+                setGuest((prev) => ({ ...prev, guestPhone: e.target.value }))
               }
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-cyan-500 focus:ring-2"
               placeholder="0901234567"
@@ -225,45 +306,12 @@ export default function BookingForm() {
             </label>
             <input
               type="email"
-              value={customer.email}
+              value={guest.guestEmail}
               onChange={(e) =>
-                setCustomer((prev) => ({ ...prev, email: e.target.value }))
+                setGuest((prev) => ({ ...prev, guestEmail: e.target.value }))
               }
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-cyan-500 focus:ring-2"
               placeholder="customer@example.com"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              CCCD/Hộ chiếu
-            </label>
-            <input
-              value={customer.cccd_passport}
-              onChange={(e) =>
-                setCustomer((prev) => ({
-                  ...prev,
-                  cccd_passport: e.target.value,
-                }))
-              }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-cyan-500 focus:ring-2"
-              placeholder="012345678901"
-              required
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Địa chỉ
-            </label>
-            <input
-              value={customer.diaChi}
-              onChange={(e) =>
-                setCustomer((prev) => ({ ...prev, diaChi: e.target.value }))
-              }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-cyan-500 focus:ring-2"
-              placeholder="123 Duong ABC, TP.HCM"
               required
             />
           </div>

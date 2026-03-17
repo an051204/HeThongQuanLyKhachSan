@@ -47,8 +47,14 @@ export interface BookingCustomerInput {
   hoTen: string;
   sdt: string;
   email: string;
-  cccd_passport: string;
-  diaChi: string;
+  cccd_passport?: string;
+  diaChi?: string;
+}
+
+export interface BookingGuestInput {
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
 }
 
 export interface CreateBookingWithMomoInput {
@@ -56,7 +62,11 @@ export interface CreateBookingWithMomoInput {
   checkInDate: string;
   checkOutDate: string;
   totalPrice: number;
-  customer: BookingCustomerInput;
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
+  customer?: BookingCustomerInput;
+  userId?: string | null;
   paymentMethod?: BookingPaymentMethod;
   note?: string;
 }
@@ -98,8 +108,12 @@ interface MomoBookingExtraData {
   checkOutDate: string;
   totalPrice: number;
   depositAmount: number;
+  userId?: string | null;
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
   paymentMethod?: BookingPaymentMethod;
-  customer: BookingCustomerInput;
+  customer: Required<BookingCustomerInput>;
   note?: string;
 }
 
@@ -130,22 +144,72 @@ function getNights(checkInDate: Date, checkOutDate: Date): number {
   );
 }
 
-function assertValidCustomer(customer: BookingCustomerInput): void {
-  if (!customer.hoTen?.trim()) {
-    throw new AppError(400, "customer.hoTen là bắt buộc.");
+function normalizeText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function assertValidGuestContact(guest: BookingGuestInput): void {
+  if (!guest.guestName?.trim()) {
+    throw new AppError(400, "guestName là bắt buộc.");
   }
-  if (!customer.sdt?.trim()) {
-    throw new AppError(400, "customer.sdt là bắt buộc.");
+  if (!guest.guestPhone?.trim()) {
+    throw new AppError(400, "guestPhone là bắt buộc.");
   }
-  if (!customer.email?.trim()) {
-    throw new AppError(400, "customer.email là bắt buộc.");
+
+  const email = guest.guestEmail?.trim();
+  if (!email) {
+    throw new AppError(400, "guestEmail là bắt buộc.");
   }
-  if (!customer.cccd_passport?.trim()) {
-    throw new AppError(400, "customer.cccd_passport là bắt buộc.");
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new AppError(400, "guestEmail không hợp lệ.");
   }
-  if (!customer.diaChi?.trim()) {
-    throw new AppError(400, "customer.diaChi là bắt buộc.");
+}
+
+function buildCustomerProfile(input: {
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
+  customer?: BookingCustomerInput;
+}): Required<BookingCustomerInput> {
+  const fallbackId = `GUEST-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+
+  return {
+    hoTen: input.guestName.trim(),
+    sdt: input.guestPhone.trim(),
+    email: input.guestEmail.trim().toLowerCase(),
+    cccd_passport: normalizeText(input.customer?.cccd_passport) || fallbackId,
+    diaChi: normalizeText(input.customer?.diaChi) || "Khach vang lai",
+  };
+}
+
+function getGuestFromExtraData(
+  parsed: Partial<MomoBookingExtraData>,
+): BookingGuestInput {
+  const guestName =
+    normalizeText(parsed.guestName) || normalizeText(parsed.customer?.hoTen);
+  const guestPhone =
+    normalizeText(parsed.guestPhone) || normalizeText(parsed.customer?.sdt);
+  const guestEmail =
+    normalizeText(parsed.guestEmail) || normalizeText(parsed.customer?.email);
+
+  return { guestName, guestPhone, guestEmail };
+}
+
+function normalizeUserId(value: unknown): string | null {
+  const normalized = normalizeText(value);
+  return normalized || null;
+}
+
+function normalizePaymentMethod(
+  value: unknown,
+): BookingPaymentMethod | undefined {
+  if (value === "CARD" || value === "QR") {
+    return value;
   }
+
+  return undefined;
 }
 
 function decodeExtraData(extraData: string): MomoBookingExtraData {
@@ -155,7 +219,7 @@ function decodeExtraData(extraData: string): MomoBookingExtraData {
 
   try {
     const decoded = Buffer.from(extraData, "base64").toString("utf8");
-    const parsed = JSON.parse(decoded) as MomoBookingExtraData;
+    const parsed = JSON.parse(decoded) as Partial<MomoBookingExtraData>;
 
     if (!parsed.roomId?.trim()) {
       throw new AppError(400, "extraData.roomId không hợp lệ.");
@@ -165,17 +229,43 @@ function decodeExtraData(extraData: string): MomoBookingExtraData {
       throw new AppError(400, "extraData thiếu checkInDate/checkOutDate.");
     }
 
-    if (!Number.isFinite(parsed.totalPrice) || parsed.totalPrice <= 0) {
+    const totalPrice = Number(parsed.totalPrice);
+    if (!Number.isFinite(totalPrice) || totalPrice <= 0) {
       throw new AppError(400, "extraData.totalPrice không hợp lệ.");
     }
 
-    if (!Number.isFinite(parsed.depositAmount) || parsed.depositAmount <= 0) {
+    const depositAmount = Number(parsed.depositAmount);
+    if (!Number.isFinite(depositAmount) || depositAmount <= 0) {
       throw new AppError(400, "extraData.depositAmount không hợp lệ.");
     }
 
-    assertValidCustomer(parsed.customer);
-    return parsed;
-  } catch {
+    const guest = getGuestFromExtraData(parsed);
+    assertValidGuestContact(guest);
+
+    return {
+      roomId: parsed.roomId,
+      checkInDate: parsed.checkInDate,
+      checkOutDate: parsed.checkOutDate,
+      totalPrice,
+      depositAmount,
+      userId: normalizeUserId(parsed.userId),
+      guestName: guest.guestName,
+      guestPhone: guest.guestPhone,
+      guestEmail: guest.guestEmail,
+      paymentMethod: normalizePaymentMethod(parsed.paymentMethod),
+      customer: buildCustomerProfile({
+        guestName: guest.guestName,
+        guestPhone: guest.guestPhone,
+        guestEmail: guest.guestEmail,
+        customer: parsed.customer,
+      }),
+      note: normalizeText(parsed.note) || undefined,
+    };
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     throw new AppError(400, "Không giải mã được extraData từ MoMo.");
   }
 }
@@ -262,6 +352,10 @@ async function createBookingAfterPaid(
     const created = await tx.phieuDatPhong.create({
       data: {
         id: orderId,
+        userId: extraData.userId,
+        guestName: extraData.guestName,
+        guestPhone: extraData.guestPhone,
+        guestEmail: extraData.guestEmail,
         idKhachHang: customerResult.data.idKhachHang,
         soPhong: extraData.roomId,
         ngayDen: checkIn,
@@ -321,7 +415,20 @@ export async function createBookingWithMomoPayment(
   }
 
   try {
-    assertValidCustomer(input.customer);
+    const guest: BookingGuestInput = {
+      guestName: input.guestName,
+      guestPhone: input.guestPhone,
+      guestEmail: input.guestEmail,
+    };
+
+    assertValidGuestContact(guest);
+    const customerProfile = buildCustomerProfile({
+      guestName: guest.guestName,
+      guestPhone: guest.guestPhone,
+      guestEmail: guest.guestEmail,
+      customer: input.customer,
+    });
+
     const paymentMethod: BookingPaymentMethod = input.paymentMethod ?? "QR";
     const requestType = resolveRequestType(paymentMethod);
 
@@ -354,8 +461,12 @@ export async function createBookingWithMomoPayment(
       checkOutDate: input.checkOutDate,
       totalPrice,
       depositAmount,
+      userId: input.userId ?? null,
+      guestName: guest.guestName.trim(),
+      guestPhone: guest.guestPhone.trim(),
+      guestEmail: guest.guestEmail.trim().toLowerCase(),
       paymentMethod,
-      customer: input.customer,
+      customer: customerProfile,
       note: input.note,
     };
 

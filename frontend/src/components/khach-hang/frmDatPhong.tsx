@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/card";
 import { useAppToast } from "@/hooks/useAppToast";
 import { formatVND, tinhSoDem, formatDate } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Tiền cọc mặc định: 30% tổng tiền phòng
 const TY_LE_COC = 0.3;
@@ -56,9 +57,39 @@ const INITIAL_FORM: KhachHangForm = {
   diaChi: "",
 };
 
+interface JwtPayloadLike {
+  taiKhoan?: string;
+  hoTen?: string;
+  name?: string;
+  fullName?: string;
+  sdt?: string;
+  phone?: string;
+  email?: string;
+}
+
+function parseJwtPayload(token: string | null): JwtPayloadLike | null {
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const payloadBase64 = token.split(".")[1];
+    if (!payloadBase64) return null;
+
+    const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const decoded = atob(padded);
+
+    return JSON.parse(decoded) as JwtPayloadLike;
+  } catch {
+    return null;
+  }
+}
+
 export default function FrmDatPhong() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, token, isAuthenticated } = useAuth();
 
   // Lấy thông tin phòng từ query params (do frmTimKiemPhong truyền sang)
   const soPhong = searchParams.get("soPhong") ?? "";
@@ -81,6 +112,42 @@ export default function FrmDatPhong() {
       error("Không có thông tin phòng. Vui lòng quay lại tìm kiếm.");
     }
   }, [error, soPhong]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const tokenPayload = parseJwtPayload(token);
+    const fallbackName =
+      user?.hoTen?.trim() ||
+      tokenPayload?.hoTen?.trim() ||
+      tokenPayload?.name?.trim() ||
+      tokenPayload?.fullName?.trim() ||
+      "";
+    const fallbackPhone =
+      user?.sdt?.trim() ||
+      tokenPayload?.sdt?.trim() ||
+      tokenPayload?.phone?.trim() ||
+      "";
+
+    const taiKhoanAsEmail = user?.taiKhoan?.includes("@")
+      ? user.taiKhoan.trim()
+      : "";
+
+    const fallbackEmail =
+      user?.email?.trim() ||
+      tokenPayload?.email?.trim() ||
+      tokenPayload?.taiKhoan?.trim() ||
+      taiKhoanAsEmail;
+
+    setForm((prev) => ({
+      ...prev,
+      hoTen: prev.hoTen || fallbackName,
+      sdt: prev.sdt || fallbackPhone,
+      email: prev.email || fallbackEmail,
+    }));
+  }, [isAuthenticated, token, user]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;

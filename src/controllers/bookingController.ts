@@ -5,6 +5,7 @@ import { validationResult } from "express-validator";
 import {
   taoDatPhong,
   danhSachDatPhong,
+  danhSachDatPhongCuaToi,
   chiTietDatPhong,
   chiTietDatPhongTheoBookingRef,
   lichSuCheckInCheckOut30Ngay,
@@ -100,6 +101,25 @@ export async function getBookingHistory(
 ): Promise<void> {
   try {
     const result = await lichSuCheckInCheckOut30Ngay();
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/bookings/my
+export async function getMyBookings(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.authUserId) {
+      res.status(401).json({ success: false, message: "Chưa xác thực." });
+      return;
+    }
+
+    const result = await danhSachDatPhongCuaToi(req.authUserId);
     res.json(result);
   } catch (err) {
     next(err);

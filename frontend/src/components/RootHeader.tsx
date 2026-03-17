@@ -5,22 +5,17 @@
 // ============================================================
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  BedDouble,
-  LogIn,
-  LogOut,
-  UserCircle,
-  Sparkles,
-  ShieldCheck,
-} from "lucide-react";
+import { usePathname } from "next/navigation";
+import { BedDouble, LogIn, UserCircle, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import UserDropdown from "@/components/UserDropdown";
 
 const ROLE_LABEL: Record<string, string> = {
   QuanLy: "Quản lý",
   LeTan: "Lễ tân",
   KeToan: "Kế toán",
   BuongPhong: "Buồng phòng",
+  KhachHang: "Khách hàng",
 };
 
 const NAV_LINKS = [
@@ -30,14 +25,14 @@ const NAV_LINKS = [
 ];
 
 export default function RootHeader() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
-
-  const handleLogout = () => {
-    logout();
-    router.replace("/login");
-  };
+  const isCustomer = user?.vaiTro === "KhachHang";
+  const profileLink = "/profile";
+  const navLinks =
+    isAuthenticated && isCustomer
+      ? [...NAV_LINKS, { href: "/booking/my", label: "Phòng đã đặt" }]
+      : NAV_LINKS;
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/85 backdrop-blur-xl">
@@ -61,7 +56,7 @@ export default function RootHeader() {
           </Link>
 
           <nav className="hidden items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 md:flex">
-            {NAV_LINKS.map((item) => {
+            {navLinks.map((item) => {
               const active =
                 pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
@@ -82,26 +77,7 @@ export default function RootHeader() {
 
           <div className="flex items-center gap-2">
             {isAuthenticated && user ? (
-              <>
-                <Link
-                  href="/admin/dashboard"
-                  className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-cyan-200 hover:text-cyan-700 sm:flex"
-                >
-                  <UserCircle className="h-4 w-4" />
-                  <span className="max-w-32 truncate">{user.hoTen}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-700">
-                    <ShieldCheck className="h-3 w-3" />
-                    {ROLE_LABEL[user.vaiTro] ?? user.vaiTro}
-                  </span>
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Đăng xuất
-                </button>
-              </>
+              <UserDropdown profileHref={profileLink} />
             ) : (
               <Link
                 href="/login"

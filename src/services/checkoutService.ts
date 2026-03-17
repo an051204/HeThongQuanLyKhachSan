@@ -367,62 +367,62 @@ export async function thucHienCheckOut(input: CheckOutInput) {
   try {
     transactionResult = await prisma.$transaction(
       async (tx) => {
-      if (incomingSurcharges.length > 0) {
-        await tx.surcharge.createMany({
-          data: incomingSurcharges.map((item) => ({
-            maDatPhong: phieu.maDatPhong,
-            tenDichVu: item.tenDichVu,
-            soTien: new Decimal(item.soTien),
-            ghiChu: item.ghiChu,
-          })),
+        if (incomingSurcharges.length > 0) {
+          await tx.surcharge.createMany({
+            data: incomingSurcharges.map((item) => ({
+              maDatPhong: phieu.maDatPhong,
+              tenDichVu: item.tenDichVu,
+              soTien: new Decimal(item.soTien),
+              ghiChu: item.ghiChu,
+            })),
+          });
+        }
+
+        await tx.phieuDatPhong.update({
+          where: { maDatPhong: phieu.maDatPhong },
+          data: {
+            actualCheckOutDate,
+          },
         });
-      }
 
-      await tx.phieuDatPhong.update({
-        where: { maDatPhong: phieu.maDatPhong },
-        data: {
-          actualCheckOutDate,
-        },
-      });
+        const hoaDonSauCapNhat = await tx.hoaDon.upsert({
+          where: { maDatPhong: phieu.maDatPhong },
+          update: {
+            idNhanVien,
+            tienPhong: new Decimal(tienPhong),
+            tienDichVu: new Decimal(0),
+            phuPhi: new Decimal(tongPhuPhi),
+            tienCocDaTru: new Decimal(tienCocDaThu),
+            tongTien: new Decimal(soTienCon),
+            paymentMethod: null,
+            paymentStatus: "PENDING",
+            ngayThanhToan: actualCheckOutDate,
+            trangThai: soTienCon === 0 ? "DaThanhToan" : "ChuaThanhToan",
+            phuongThucTT: soTienCon === 0 ? "TienMat" : null,
+            ghiChu: ghiChuCheckOut || undefined,
+          },
+          create: {
+            maDatPhong: phieu.maDatPhong,
+            idNhanVien,
+            tienPhong: new Decimal(tienPhong),
+            tienDichVu: new Decimal(0),
+            phuPhi: new Decimal(tongPhuPhi),
+            tienCocDaTru: new Decimal(tienCocDaThu),
+            tongTien: new Decimal(soTienCon),
+            paymentMethod: null,
+            paymentStatus: "PENDING",
+            ngayThanhToan: actualCheckOutDate,
+            trangThai: soTienCon === 0 ? "DaThanhToan" : "ChuaThanhToan",
+            phuongThucTT: soTienCon === 0 ? "TienMat" : null,
+            ghiChu: ghiChuCheckOut || undefined,
+          },
+          select: { maHoaDon: true },
+        });
 
-      const hoaDonSauCapNhat = await tx.hoaDon.upsert({
-        where: { maDatPhong: phieu.maDatPhong },
-        update: {
-          idNhanVien,
-          tienPhong: new Decimal(tienPhong),
-          tienDichVu: new Decimal(0),
-          phuPhi: new Decimal(tongPhuPhi),
-          tienCocDaTru: new Decimal(tienCocDaThu),
-          tongTien: new Decimal(soTienCon),
-          paymentMethod: null,
-          paymentStatus: "PENDING",
-          ngayThanhToan: actualCheckOutDate,
-          trangThai: soTienCon === 0 ? "DaThanhToan" : "ChuaThanhToan",
-          phuongThucTT: soTienCon === 0 ? "TienMat" : null,
-          ghiChu: ghiChuCheckOut || undefined,
-        },
-        create: {
+        return {
           maDatPhong: phieu.maDatPhong,
-          idNhanVien,
-          tienPhong: new Decimal(tienPhong),
-          tienDichVu: new Decimal(0),
-          phuPhi: new Decimal(tongPhuPhi),
-          tienCocDaTru: new Decimal(tienCocDaThu),
-          tongTien: new Decimal(soTienCon),
-          paymentMethod: null,
-          paymentStatus: "PENDING",
-          ngayThanhToan: actualCheckOutDate,
-          trangThai: soTienCon === 0 ? "DaThanhToan" : "ChuaThanhToan",
-          phuongThucTT: soTienCon === 0 ? "TienMat" : null,
-          ghiChu: ghiChuCheckOut || undefined,
-        },
-        select: { maHoaDon: true },
-      });
-
-      return {
-        maDatPhong: phieu.maDatPhong,
-        maHoaDon: hoaDonSauCapNhat.maHoaDon,
-      };
+          maHoaDon: hoaDonSauCapNhat.maHoaDon,
+        };
       },
       {
         maxWait: 10_000,
@@ -463,34 +463,33 @@ export async function thucHienCheckOut(input: CheckOutInput) {
     );
   }
 
-  const [bookingSauTinhTien, hoaDonSauCapNhat, surcharges] =
-    await Promise.all([
-      prisma.phieuDatPhong.findUnique({
-        where: { maDatPhong: transactionResult.maDatPhong },
-        include: {
-          khachHang: { select: { hoTen: true, email: true } },
-          phong: { select: { soPhong: true, giaPhong: true } },
-        },
-      }),
-      prisma.hoaDon.findUnique({
-        where: { maHoaDon: transactionResult.maHoaDon },
-        include: {
-          phieuDatPhong: {
-            include: {
-              khachHang: { select: { hoTen: true, email: true } },
-              phong: {
-                include: { loaiPhong: { select: { tenLoai: true } } },
-              },
+  const [bookingSauTinhTien, hoaDonSauCapNhat, surcharges] = await Promise.all([
+    prisma.phieuDatPhong.findUnique({
+      where: { maDatPhong: transactionResult.maDatPhong },
+      include: {
+        khachHang: { select: { hoTen: true, email: true } },
+        phong: { select: { soPhong: true, giaPhong: true } },
+      },
+    }),
+    prisma.hoaDon.findUnique({
+      where: { maHoaDon: transactionResult.maHoaDon },
+      include: {
+        phieuDatPhong: {
+          include: {
+            khachHang: { select: { hoTen: true, email: true } },
+            phong: {
+              include: { loaiPhong: { select: { tenLoai: true } } },
             },
           },
-          nhanVien: { select: { hoTen: true } },
         },
-      }),
-      prisma.surcharge.findMany({
-        where: { maDatPhong: transactionResult.maDatPhong },
-        orderBy: [{ createdAt: "asc" }],
-      }),
-    ]);
+        nhanVien: { select: { hoTen: true } },
+      },
+    }),
+    prisma.surcharge.findMany({
+      where: { maDatPhong: transactionResult.maDatPhong },
+      orderBy: [{ createdAt: "asc" }],
+    }),
+  ]);
 
   if (!bookingSauTinhTien || !hoaDonSauCapNhat) {
     throw new AppError(

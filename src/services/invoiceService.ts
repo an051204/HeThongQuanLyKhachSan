@@ -58,8 +58,6 @@ function formatPaymentMethod(value?: string | null): string {
       return "Tiền mặt";
     case "ChuyenKhoan":
       return "Chuyển khoản";
-    case "VNPay":
-      return "Chuyển khoản VNPay";
     default:
       return value;
   }
@@ -399,27 +397,4 @@ export async function xuatHoaDonHtml(maHoaDon: string) {
     fileName: `hoa-don-${maHoaDon}.html`,
     content: renderHoaDonHtml(hoaDon),
   };
-}
-
-export async function xuatHoaDonChoKhachTuTxnRef(txnRef: string) {
-  const giaoDich = await prisma.vnpayTransaction.findUnique({
-    where: { txnRef },
-    select: {
-      maHoaDon: true,
-      status: true,
-    },
-  });
-
-  if (!giaoDich) {
-    throw new AppError(404, "Không tìm thấy giao dịch VNPay.");
-  }
-
-  if (giaoDich.status !== "Success") {
-    throw new AppError(
-      400,
-      "Giao dịch chưa thành công, chưa thể xuất hóa đơn.",
-    );
-  }
-
-  return xuatHoaDonHtml(giaoDich.maHoaDon);
 }

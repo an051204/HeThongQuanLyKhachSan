@@ -9,9 +9,11 @@
     "postinstall": "prisma generate",
     "start": "node dist/server.js",
     "smoke:backend": "node -r dotenv/config scripts/smoke-backend.js",
+    "smoke:backend:url": "node -r dotenv/config scripts/smoke-backend.js",
     "test:e2e:momo-booking": "node -r dotenv/config scripts/momo-booking-e2e.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "ts-node -r dotenv/config prisma/seed.ts",
     "db:studio": "prisma studio"

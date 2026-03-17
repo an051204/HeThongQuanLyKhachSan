@@ -47,6 +47,7 @@ enum VaiTroNhanVien {
   LeTan       // Lễ tân - check-in/out, đặt phòng
   BuongPhong  // Nhân viên buồng phòng - dọn dẹp
   KeToan      // Kế toán - hóa đơn, báo cáo
+  KhachHang   // Tài khoản khách hàng public đăng ký
 }
 
 enum TrangThaiDoiTac {
@@ -70,6 +71,39 @@ enum CheckoutPaymentMethod {
 enum CheckoutPaymentStatus {
   PENDING
   SUCCESS
+}
+
+enum CashShiftStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashVoucherType {
+  THU
+  CHI
+}
+
+enum CashVoucherStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum CashVoucherMethod {
+  CASH
+  BANK_TRANSFER
+  POS
+  MOMO
+  OTHER
+}
+
+enum PartnerSettlementStatus {
+  DRAFT
+  CONFIRMED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
 }
 
 // ============================================================
@@ -149,6 +183,12 @@ model NhanVien {
   hoaDon        HoaDon[]
   refreshTokens RefreshToken[]
   nhatKy        NhatKyBuongPhong[]
+  cashShiftsOpened         CashShift[]         @relation("CashShiftOpenedBy")
+  cashShiftsClosed         CashShift[]         @relation("CashShiftClosedBy")
+  cashVouchersCreated      CashVoucher[]       @relation("CashVoucherCreatedBy")
+  cashVouchersApproved     CashVoucher[]       @relation("CashVoucherApprovedBy")
+  partnerSettlementsCreated  PartnerSettlement[] @relation("PartnerSettlementCreatedBy")
+  partnerSettlementsApproved PartnerSettlement[] @relation("PartnerSettlementApprovedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -159,6 +199,10 @@ model NhanVien {
 // -- Phiếu đặt phòng --
 model PhieuDatPhong {
   maDatPhong  String       @id @default(cuid())
+  userId      String?
+  guestName   String
+  guestPhone  String
+  guestEmail  String
   idKhachHang String
   soPhong     String
   idDoiTac    String?      // đặt qua đối tác B2B
@@ -187,6 +231,7 @@ model PhieuDatPhong {
   hoaDon        HoaDon?
   chiTietDichVu ChiTietDichVu[]
   surcharges    Surcharge[]
+  cashVouchers  CashVoucher[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -213,8 +258,8 @@ model HoaDon {
 
   phieuDatPhong PhieuDatPhong @relation(fields: [maDatPhong], references: [maDatPhong])
   nhanVien      NhanVien      @relation(fields: [idNhanVien], references: [idNhanVien])
-  vnpayTransactions VnpayTransaction[] @relation("HoaDonVnpayTransactions")
   momoTransaction MomoTransaction? @relation("HoaDonMomoTransaction")
+  cashVouchers  CashVoucher[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -304,11 +349,109 @@ model DoiTac {
   ghiChu         String?
 
   phieuDatPhong PhieuDatPhong[]
+  partnerSettlements PartnerSettlement[]
+  cashVouchers      CashVoucher[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("DoiTac")
+}
+
+model CashShift {
+  id          String         @id @default(cuid())
+  openedById  String
+  closedById  String?
+  openedAt    DateTime       @default(now())
+  closedAt    DateTime?
+  openingCash Decimal        @db.Decimal(15, 2) @default(0)
+  expectedCash Decimal       @db.Decimal(15, 2) @default(0)
+  actualCash  Decimal?       @db.Decimal(15, 2)
+  variance    Decimal?       @db.Decimal(15, 2)
+  note        String?
+  status      CashShiftStatus @default(OPEN)
+
+  openedBy NhanVien  @relation("CashShiftOpenedBy", fields: [openedById], references: [idNhanVien])
+  closedBy NhanVien? @relation("CashShiftClosedBy", fields: [closedById], references: [idNhanVien])
+  vouchers CashVoucher[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, openedAt])
+  @@map("CashShift")
+}
+
+model PartnerSettlement {
+  id               String                 @id @default(cuid())
+  settlementCode   String                 @unique
+  idDoiTac         String
+  periodFrom       DateTime
+  periodTo         DateTime
+  grossRevenue     Decimal                @db.Decimal(15, 2) @default(0)
+  commissionRate   Float                  @default(0)
+  commissionAmount Decimal                @db.Decimal(15, 2) @default(0)
+  netReceivable    Decimal                @db.Decimal(15, 2) @default(0)
+  paidAmount       Decimal                @db.Decimal(15, 2) @default(0)
+  outstandingAmount Decimal               @db.Decimal(15, 2) @default(0)
+  dueDate          DateTime?
+  status           PartnerSettlementStatus @default(DRAFT)
+  note             String?
+
+  createdById String
+  approvedById String?
+  approvedAt  DateTime?
+
+  doiTac     DoiTac   @relation(fields: [idDoiTac], references: [idDoiTac])
+  createdBy  NhanVien @relation("PartnerSettlementCreatedBy", fields: [createdById], references: [idNhanVien])
+  approvedBy NhanVien? @relation("PartnerSettlementApprovedBy", fields: [approvedById], references: [idNhanVien])
+  vouchers   CashVoucher[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([idDoiTac, status])
+  @@index([periodFrom, periodTo])
+  @@map("PartnerSettlement")
+}
+
+model CashVoucher {
+  id          String            @id @default(cuid())
+  voucherNo   String            @unique
+  type        CashVoucherType
+  status      CashVoucherStatus @default(DRAFT)
+  method      CashVoucherMethod @default(CASH)
+  amount      Decimal           @db.Decimal(15, 2)
+  occurredAt  DateTime          @default(now())
+  description String
+  category    String?
+  referenceNo String?
+  note        String?
+
+  shiftId            String?
+  doiTacId           String?
+  relatedInvoiceId   String?
+  relatedBookingId   String?
+  relatedSettlementId String?
+  createdById        String
+  approvedById       String?
+  approvedAt         DateTime?
+
+  shift          CashShift?         @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  doiTac         DoiTac?            @relation(fields: [doiTacId], references: [idDoiTac], onDelete: SetNull)
+  relatedInvoice HoaDon?            @relation(fields: [relatedInvoiceId], references: [maHoaDon], onDelete: SetNull)
+  relatedBooking PhieuDatPhong?     @relation(fields: [relatedBookingId], references: [maDatPhong], onDelete: SetNull)
+  settlement     PartnerSettlement? @relation(fields: [relatedSettlementId], references: [id], onDelete: SetNull)
+  createdBy      NhanVien           @relation("CashVoucherCreatedBy", fields: [createdById], references: [idNhanVien])
+  approvedBy     NhanVien?          @relation("CashVoucherApprovedBy", fields: [approvedById], references: [idNhanVien])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, status, occurredAt])
+  @@index([doiTacId])
+  @@index([relatedSettlementId])
+  @@map("CashVoucher")
 }
 
 // -- Refresh token (JWT revocation) --
@@ -339,28 +482,6 @@ model NhatKyBuongPhong {
   nhanVien NhanVien @relation(fields: [idNhanVien], references: [idNhanVien])
 
   @@map("NhatKyBuongPhong")
-}
-
-// -- VNPay Payment Transactions (Legacy) --
-model VnpayTransaction {
-  id                String    @id @default(cuid())
-  maHoaDon          String
-  txnRef            String    @unique
-  amount            Decimal   @db.Decimal(15, 2)
-  status            String    @default("Created") // Created, Success, Failed, InvalidSignature
-  responseCode      String?
-  transactionNo     String?
-  bankCode          String?
-  sourceLast        String?
-  requestPayload    String?
-  callbackAt        DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  hoaDon HoaDon @relation("HoaDonVnpayTransactions", fields: [maHoaDon], references: [maHoaDon])
-
-  @@index([maHoaDon])
-  @@map("VnpayTransaction")
 }
 
 // -- MoMo Payment Transactions --

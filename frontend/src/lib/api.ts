@@ -27,8 +27,6 @@ import type {
   CheckoutGenerateQrResult,
   CheckoutStatusResult,
   ThongKeTongQuan,
-  VnpayCreatePaymentData,
-  VnpayReturnData,
   PaginatedResult,
   PaginationMeta,
   TimKiemPhongInput,
@@ -36,6 +34,17 @@ import type {
   BookingCreateInput,
   BookingCreateResponseData,
   BookingHistoryItem,
+  AccountingOverview,
+  CashShift,
+  CashVoucher,
+  PartnerSettlement,
+  OpenCashShiftInput,
+  CloseCashShiftInput,
+  CreateCashVoucherInput,
+  CreatePartnerSettlementInput,
+  CollectPartnerSettlementInput,
+  NhanVien,
+  PhongGoiYData,
 } from "@/types";
 
 // ── Cấu hình Axios instance ───────────────────────────────────
@@ -46,10 +55,6 @@ const apiClient = axios.create({
   },
   timeout: 15000, // 15 giây
 });
-
-function getApiBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
-}
 
 const EMPTY_PAGINATION: PaginationMeta = {
   page: 1,
@@ -135,6 +140,25 @@ export async function getPhongTrong(
     },
   });
   return data.data ?? [];
+}
+
+export async function getPhongGoiY(params?: {
+  ngayDen?: string;
+  ngayDi?: string;
+  limitLoai?: number;
+  limitPhong?: number;
+}): Promise<PhongGoiYData> {
+  const { data } = await apiClient.get<ApiResponse<PhongGoiYData>>(
+    "/phong/goi-y",
+    { params },
+  );
+
+  return (
+    data.data ?? {
+      topLoaiPhong: [],
+      phongNoiBat: [],
+    }
+  );
 }
 
 /** Lấy tất cả phòng (cho admin) */
@@ -292,6 +316,23 @@ export async function getRecentBookingHistory(): Promise<BookingHistoryItem[]> {
   return data.data ?? [];
 }
 
+export async function getMyBookings(): Promise<PhieuDatPhong[]> {
+  const { data } =
+    await apiClient.get<ApiResponse<PhieuDatPhong[]>>("/bookings/my");
+  return data.data ?? [];
+}
+
+export async function updateMyProfile(payload: {
+  email?: string;
+  sdt?: string;
+}): Promise<NhanVien> {
+  const { data } = await apiClient.patch<ApiResponse<NhanVien>>(
+    "/auth/me",
+    payload,
+  );
+  return data.data!;
+}
+
 export async function checkInBookingById(id: string): Promise<PhieuDatPhong> {
   const { data } = await apiClient.post<ApiResponse<PhieuDatPhong>>(
     `/bookings/${id}/checkin`,
@@ -442,47 +483,11 @@ export async function thanhToanHoaDon(
   return data.data!;
 }
 
-export async function taoLinkThanhToanVNPay(
-  maHoaDon: string,
-): Promise<VnpayCreatePaymentData> {
-  const { data } = await apiClient.post<ApiResponse<VnpayCreatePaymentData>>(
-    `/payment/vnpay/${maHoaDon}/create`,
-  );
-  return data.data!;
-}
-
-export async function taoLinkThanhToanVNPayCongKhai(
-  maHoaDon: string,
-): Promise<VnpayCreatePaymentData> {
-  const { data } = await apiClient.post<ApiResponse<VnpayCreatePaymentData>>(
-    `/payment/vnpay/public/${maHoaDon}/create`,
-  );
-  return data.data!;
-}
-
-export async function xuLyVnpayReturn(
-  rawQuery: string,
-): Promise<{ success: boolean; message?: string; data?: VnpayReturnData }> {
-  const query = rawQuery.startsWith("?") ? rawQuery.slice(1) : rawQuery;
-  const { data } = await apiClient.get<
-    ApiResponse<VnpayReturnData> & { success: boolean }
-  >(`/payment/vnpay/return?${query}`);
-  return {
-    success: Boolean((data as any).success),
-    message: data.message,
-    data: data.data,
-  };
-}
-
 export async function xuatHoaDonHtml(maHoaDon: string): Promise<Blob> {
   const response = await apiClient.get(`/hoa-don/${maHoaDon}/xuat`, {
     responseType: "blob",
   });
   return response.data as Blob;
-}
-
-export function getCustomerInvoiceExportUrlByTxnRef(txnRef: string): string {
-  return `${getApiBaseUrl()}/payment/vnpay/${txnRef}/invoice`;
 }
 
 // ============================================================
@@ -679,5 +684,147 @@ export async function generateApiKeyDoiTac(
   const { data } = await apiClient.post<ApiResponse<{ apiKey: string }>>(
     `/doi-tac/${id}/api-key`,
   );
+  return data.data!;
+}
+
+// ============================================================
+// KẾ TOÁN API
+// ============================================================
+
+export async function getAccountingOverview(): Promise<AccountingOverview> {
+  const { data } =
+    await apiClient.get<ApiResponse<AccountingOverview>>("/ke-toan/tong-quan");
+  return data.data!;
+}
+
+export async function getAccountingPartners(): Promise<DoiTac[]> {
+  const { data } =
+    await apiClient.get<ApiResponse<DoiTac[]>>("/ke-toan/doi-tac");
+  return data.data ?? [];
+}
+
+export async function getDanhSachCaThuNgan(params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedResult<CashShift>> {
+  const { data } = await apiClient.get<
+    ApiResponse<PaginatedResult<CashShift> | CashShift[]>
+  >("/ke-toan/ca-thu-ngan", { params });
+  return toPaginatedResult<CashShift>(data.data);
+}
+
+export async function getCaThuNganHienTai(): Promise<CashShift | null> {
+  const { data } = await apiClient.get<ApiResponse<CashShift | null>>(
+    "/ke-toan/ca-thu-ngan/hien-tai",
+  );
+  return data.data ?? null;
+}
+
+export async function moCaThuNgan(
+  payload: OpenCashShiftInput,
+): Promise<CashShift> {
+  const { data } = await apiClient.post<ApiResponse<CashShift>>(
+    "/ke-toan/ca-thu-ngan/mo",
+    payload,
+  );
+  return data.data!;
+}
+
+export async function dongCaThuNgan(
+  id: string,
+  payload: CloseCashShiftInput,
+): Promise<CashShift> {
+  const { data } = await apiClient.post<ApiResponse<CashShift>>(
+    `/ke-toan/ca-thu-ngan/${id}/dong`,
+    payload,
+  );
+  return data.data!;
+}
+
+export async function getDanhSachPhieuThuChi(params?: {
+  type?: "THU" | "CHI";
+  status?: "DRAFT" | "CONFIRMED" | "CANCELLED";
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedResult<CashVoucher>> {
+  const { data } = await apiClient.get<
+    ApiResponse<PaginatedResult<CashVoucher> | CashVoucher[]>
+  >("/ke-toan/phieu-thu-chi", { params });
+  return toPaginatedResult<CashVoucher>(data.data);
+}
+
+export async function createPhieuThuChi(
+  payload: CreateCashVoucherInput,
+): Promise<CashVoucher> {
+  const { data } = await apiClient.post<ApiResponse<CashVoucher>>(
+    "/ke-toan/phieu-thu-chi",
+    payload,
+  );
+  return data.data!;
+}
+
+export async function xacNhanPhieuThuChi(id: string): Promise<CashVoucher> {
+  const { data } = await apiClient.patch<ApiResponse<CashVoucher>>(
+    `/ke-toan/phieu-thu-chi/${id}/xac-nhan`,
+  );
+  return data.data!;
+}
+
+export async function huyPhieuThuChi(id: string): Promise<CashVoucher> {
+  const { data } = await apiClient.patch<ApiResponse<CashVoucher>>(
+    `/ke-toan/phieu-thu-chi/${id}/huy`,
+  );
+  return data.data!;
+}
+
+export async function getDanhSachCongNoDoiTac(params?: {
+  idDoiTac?: string;
+  status?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedResult<PartnerSettlement>> {
+  const { data } = await apiClient.get<
+    ApiResponse<PaginatedResult<PartnerSettlement> | PartnerSettlement[]>
+  >("/ke-toan/cong-no-doi-tac", { params });
+  return toPaginatedResult<PartnerSettlement>(data.data);
+}
+
+export async function createCongNoDoiTac(
+  payload: CreatePartnerSettlementInput,
+): Promise<PartnerSettlement> {
+  const { data } = await apiClient.post<ApiResponse<PartnerSettlement>>(
+    "/ke-toan/cong-no-doi-tac",
+    payload,
+  );
+  return data.data!;
+}
+
+export async function thuTienCongNoDoiTac(
+  settlementId: string,
+  payload: CollectPartnerSettlementInput,
+): Promise<{
+  settlement: PartnerSettlement;
+  voucher: {
+    id: string;
+    voucherNo: string;
+    amount: number;
+    method: string;
+    occurredAt: string;
+  };
+}> {
+  const { data } = await apiClient.post<
+    ApiResponse<{
+      settlement: PartnerSettlement;
+      voucher: {
+        id: string;
+        voucherNo: string;
+        amount: number;
+        method: string;
+        occurredAt: string;
+      };
+    }>
+  >(`/ke-toan/cong-no-doi-tac/${settlementId}/thu-tien`, payload);
   return data.data!;
 }

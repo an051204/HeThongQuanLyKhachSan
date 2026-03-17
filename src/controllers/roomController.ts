@@ -5,6 +5,7 @@ import { validationResult } from "express-validator";
 import {
   layDanhSachPhong,
   layChiTietPhong,
+  layGoiYPhong,
   taoPhong,
   capNhatPhong,
   xoaPhong,
@@ -73,6 +74,31 @@ export async function searchPhongTrong(
       giaTu,
       giaDen,
       tienNghi,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getRoomSuggestions(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { ngayDen, ngayDi, limitLoai, limitPhong } = req.query as {
+      ngayDen?: string;
+      ngayDi?: string;
+      limitLoai?: string;
+      limitPhong?: string;
+    };
+
+    const result = await layGoiYPhong({
+      ngayDen,
+      ngayDi,
+      limitLoai,
+      limitPhong,
     });
     res.json(result);
   } catch (err) {

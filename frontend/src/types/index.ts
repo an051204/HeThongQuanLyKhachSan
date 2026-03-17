@@ -12,15 +12,41 @@ export type TrangThaiDat =
 
 export type TrangThaiHoaDon = "ChuaThanhToan" | "DaThanhToan" | "DaHuy";
 
-export type PhuongThucThanhToan = "TienMat" | "ChuyenKhoan" | "VNPay";
+export type PhuongThucThanhToan = "TienMat" | "ChuyenKhoan" | "MoMo";
 
 export type CheckoutPaymentMethod = "CASH" | "POS" | "MOMO_QR";
 
 export type CheckoutPaymentStatus = "PENDING" | "SUCCESS";
 
-export type VaiTroNhanVien = "QuanLy" | "LeTan" | "BuongPhong" | "KeToan";
+export type VaiTroNhanVien =
+  | "QuanLy"
+  | "LeTan"
+  | "BuongPhong"
+  | "KeToan"
+  | "KhachHang";
 
 export type TrangThaiDoiTac = "DangHoatDong" | "TamNgung" | "DaKhoa";
+
+export type CashShiftStatus = "OPEN" | "CLOSED";
+
+export type CashVoucherType = "THU" | "CHI";
+
+export type CashVoucherStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
+
+export type CashVoucherMethod =
+  | "CASH"
+  | "BANK_TRANSFER"
+  | "POS"
+  | "MOMO"
+  | "OTHER";
+
+export type PartnerSettlementStatus =
+  | "DRAFT"
+  | "CONFIRMED"
+  | "PARTIALLY_PAID"
+  | "PAID"
+  | "OVERDUE"
+  | "CANCELLED";
 
 // ── Models ─────────────────────────────────────────────────────
 export interface KhachHang {
@@ -57,6 +83,24 @@ export interface Phong {
   tinhTrang: TinhTrangPhong;
   moTa?: string;
   loaiPhong?: LoaiPhong;
+}
+
+export interface LoaiPhongDatNhieu {
+  idLoaiPhong: string;
+  tenLoai: string;
+  soLuotDat: number;
+  giaThamKhao: number;
+  sucChua?: number;
+  soGiuong?: number;
+  dienTich?: number;
+  tienNghi?: string | null;
+  albumAnh?: string | null;
+  soPhongTrong: number;
+}
+
+export interface PhongGoiYData {
+  topLoaiPhong: LoaiPhongDatNhieu[];
+  phongNoiBat: Phong[];
 }
 
 export interface DichVu {
@@ -103,6 +147,10 @@ export interface DoiTac {
 export interface PhieuDatPhong {
   id?: string | null;
   maDatPhong: string;
+  userId?: string | null;
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
   idKhachHang: string;
   soPhong: string;
   idDoiTac?: string;
@@ -154,6 +202,160 @@ export interface BookingHistoryItem {
   trangThai: Extract<TrangThaiDat, "DaCheckIn" | "DaCheckOut">;
   action: "CHECK_IN" | "CHECK_OUT";
   actionAt: string;
+}
+
+export interface CashShift {
+  id: string;
+  openedById: string;
+  closedById?: string | null;
+  openedAt: string;
+  closedAt?: string | null;
+  openingCash: number;
+  expectedCash: number;
+  actualCash?: number | null;
+  variance?: number | null;
+  note?: string | null;
+  status: CashShiftStatus;
+  openedBy?: NhanVien;
+  closedBy?: NhanVien;
+  summary?: {
+    openingCash: number;
+    cashFromInvoices: number;
+    thuVoucher: number;
+    chiVoucher: number;
+    expected: number;
+  };
+}
+
+export interface CashVoucher {
+  id: string;
+  voucherNo: string;
+  type: CashVoucherType;
+  status: CashVoucherStatus;
+  method: CashVoucherMethod;
+  amount: number;
+  occurredAt: string;
+  description: string;
+  category?: string | null;
+  referenceNo?: string | null;
+  note?: string | null;
+  shiftId?: string | null;
+  doiTacId?: string | null;
+  relatedInvoiceId?: string | null;
+  relatedBookingId?: string | null;
+  relatedSettlementId?: string | null;
+  createdById: string;
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  shift?: Pick<CashShift, "id" | "openedAt" | "status">;
+  doiTac?: Pick<DoiTac, "idDoiTac" | "tenDoiTac">;
+  settlement?: {
+    id: string;
+    settlementCode: string;
+  };
+  createdBy?: NhanVien;
+  approvedBy?: NhanVien;
+}
+
+export interface PartnerSettlement {
+  id: string;
+  settlementCode: string;
+  idDoiTac: string;
+  periodFrom: string;
+  periodTo: string;
+  grossRevenue: number;
+  commissionRate: number;
+  commissionAmount: number;
+  netReceivable: number;
+  paidAmount: number;
+  outstandingAmount: number;
+  dueDate?: string | null;
+  status: PartnerSettlementStatus;
+  note?: string | null;
+  createdById: string;
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  doiTac?: Pick<DoiTac, "idDoiTac" | "tenDoiTac" | "email" | "tyLeChietKhau">;
+  vouchers?: Array<{
+    id: string;
+    voucherNo: string;
+    amount: number;
+    method: CashVoucherMethod;
+    occurredAt: string;
+  }>;
+}
+
+export interface AccountingOverview {
+  caDangMo: {
+    id: string;
+    openedAt: string;
+    openedBy: Pick<NhanVien, "idNhanVien" | "hoTen" | "vaiTro">;
+    openingCash: number;
+    cashFromInvoices: number;
+    thuVoucher: number;
+    chiVoucher: number;
+    expected: number;
+  } | null;
+  thuChiThangNay: {
+    tongThu: number;
+    tongChi: number;
+    dongTienRong: number;
+  };
+  congNoDoiTac: {
+    soPhienDangTheoDoi: number;
+    tongConPhaiThu: number;
+  };
+  hoaDonChoThu: {
+    soHoaDon: number;
+    tongTien: number;
+  };
+}
+
+export interface OpenCashShiftInput {
+  openingCash?: number;
+  note?: string;
+}
+
+export interface CloseCashShiftInput {
+  actualCash: number;
+  note?: string;
+}
+
+export interface CreateCashVoucherInput {
+  type: CashVoucherType;
+  amount: number;
+  method?: CashVoucherMethod;
+  description: string;
+  category?: string;
+  referenceNo?: string;
+  note?: string;
+  occurredAt?: string;
+  shiftId?: string;
+  doiTacId?: string;
+  relatedInvoiceId?: string;
+  relatedBookingId?: string;
+  relatedSettlementId?: string;
+}
+
+export interface CreatePartnerSettlementInput {
+  idDoiTac: string;
+  periodFrom: string;
+  periodTo: string;
+  commissionRate?: number;
+  dueDate?: string;
+  note?: string;
+}
+
+export interface CollectPartnerSettlementInput {
+  amount: number;
+  method?: CashVoucherMethod;
+  occurredAt?: string;
+  referenceNo?: string;
+  note?: string;
 }
 
 // ── Dashboard / Stats ──────────────────────────────────────────
@@ -269,8 +471,8 @@ export interface BookingMomoCustomerInput {
   hoTen: string;
   sdt: string;
   email: string;
-  cccd_passport: string;
-  diaChi: string;
+  cccd_passport?: string;
+  diaChi?: string;
 }
 
 export type BookingPaymentMethod = "QR" | "CARD";
@@ -280,7 +482,10 @@ export interface BookingCreateInput {
   checkInDate: string;
   checkOutDate: string;
   totalPrice: number;
-  customer: BookingMomoCustomerInput;
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
+  customer?: BookingMomoCustomerInput;
   paymentMethod?: BookingPaymentMethod;
   note?: string;
 }
@@ -379,6 +584,8 @@ export interface NhanVien {
   hoTen: string;
   taiKhoan: string;
   vaiTro: VaiTroNhanVien;
+  sdt?: string;
+  email?: string;
 }
 
 export interface LoginInput {
@@ -389,24 +596,4 @@ export interface LoginInput {
 export interface LoginResponse {
   token: string;
   nhanVien: NhanVien;
-}
-
-export interface VnpayCreatePaymentData {
-  maHoaDon: string;
-  phuongThuc: "VNPay";
-  tongTien: number;
-  txnRef: string;
-  paymentUrl: string;
-  hetHanLuc: string;
-  note?: string;
-}
-
-export interface VnpayReturnData {
-  maHoaDon: string;
-  txnRef: string;
-  responseCode: string;
-  transactionNo: string;
-  bankCode: string;
-  paid: boolean;
-  customerInvoiceUrl?: string;
 }

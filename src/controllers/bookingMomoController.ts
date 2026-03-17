@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import {
   buildBookingMomoCallbackRedirect,
+  type CreateBookingWithMomoInput,
   createBookingWithMomoPayment,
   processBookingMomoIpn,
 } from "../services/bookingMomoService";
@@ -20,7 +21,10 @@ export async function createBookingAndPayDeposit(
   }
 
   try {
-    const result = await createBookingWithMomoPayment(req.body);
+    const result = await createBookingWithMomoPayment({
+      ...(req.body as Omit<CreateBookingWithMomoInput, "userId">),
+      userId: req.authUserId ?? null,
+    });
     res.status(201).json({
       success: true,
       message:

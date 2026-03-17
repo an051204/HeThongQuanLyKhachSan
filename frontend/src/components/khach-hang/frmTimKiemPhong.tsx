@@ -25,10 +25,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getDanhSachLoaiPhong, getPhongTrong } from "@/lib/api";
+import { getDanhSachLoaiPhong, getPhongGoiY, getPhongTrong } from "@/lib/api";
 import { useAppToast } from "@/hooks/useAppToast";
 import { formatVND, tinhSoDem } from "@/lib/utils";
-import type { LoaiPhong, Phong, TimKiemPhongInput } from "@/types";
+import type {
+  LoaiPhong,
+  LoaiPhongDatNhieu,
+  Phong,
+  PhongGoiYData,
+  TimKiemPhongInput,
+} from "@/types";
 
 type LoaiPhongOption = {
   value: string;
@@ -164,7 +170,12 @@ export default function FrmTimKiemPhong() {
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedPhong, setSelectedPhong] = useState<Phong | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingGoiY, setLoadingGoiY] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [goiYData, setGoiYData] = useState<PhongGoiYData>({
+    topLoaiPhong: [],
+    phongNoiBat: [],
+  });
   const { error } = useAppToast();
 
   useEffect(() => {
@@ -184,6 +195,27 @@ export default function FrmTimKiemPhong() {
 
     void fetchLoaiPhong();
   }, []);
+
+  useEffect(() => {
+    async function fetchGoiYPhong() {
+      setLoadingGoiY(true);
+      try {
+        const data = await getPhongGoiY({
+          ngayDen: form.ngayDen,
+          ngayDi: form.ngayDi,
+          limitLoai: 4,
+          limitPhong: 6,
+        });
+        setGoiYData(data);
+      } catch {
+        setGoiYData({ topLoaiPhong: [], phongNoiBat: [] });
+      } finally {
+        setLoadingGoiY(false);
+      }
+    }
+
+    void fetchGoiYPhong();
+  }, [form.ngayDen, form.ngayDi]);
 
   const amenityOptions = useMemo(() => {
     return Array.from(
@@ -466,6 +498,75 @@ export default function FrmTimKiemPhong() {
         </div>
       </Card>
 
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-800">
+            Gợi ý nhanh không cần tìm kiếm
+          </h2>
+          {loadingGoiY ? (
+            <span className="text-xs text-slate-500">
+              Đang cập nhật gợi ý...
+            </span>
+          ) : null}
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[1.05fr_1.95fr]">
+          <Card className="border-slate-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                Loại phòng được đặt nhiều
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {goiYData.topLoaiPhong.length > 0 ? (
+                goiYData.topLoaiPhong.map((item, index) => (
+                  <TopRoomTypeCard
+                    key={item.idLoaiPhong}
+                    item={item}
+                    rank={index + 1}
+                  />
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Chưa có dữ liệu đặt phòng để gợi ý hạng phòng phổ biến.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-slate-800">
+                Phòng nổi bật
+              </h3>
+              <p className="text-xs text-slate-500">
+                Đang trống và được ưu tiên nhiều lượt đặt
+              </p>
+            </div>
+
+            {goiYData.phongNoiBat.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {goiYData.phongNoiBat.map((phong) => (
+                  <PhongCard
+                    key={`goi-y-${phong.soPhong}`}
+                    phong={phong}
+                    soDem={soDem}
+                    onChon={() => handleChonPhong(phong)}
+                    onXemChiTiet={() => setSelectedPhong(phong)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="border-slate-200">
+                <CardContent className="py-10 text-center text-sm text-slate-500">
+                  Hiện chưa có phòng nổi bật để gợi ý.
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </section>
+
       {searched && (
         <div className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -671,6 +772,68 @@ function PhongCard({
         </div>
       </CardFooter>
     </Card>
+  );
+}
+
+function TopRoomTypeCard({
+  item,
+  rank,
+}: {
+  item: LoaiPhongDatNhieu;
+  rank: number;
+}) {
+  const amenities = parseAmenities(item.tienNghi).slice(0, 3);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-slate-500">Top {rank}</p>
+          <p className="text-sm font-semibold text-slate-900">{item.tenLoai}</p>
+        </div>
+        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+          {item.soLuotDat} lượt đặt
+        </Badge>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+        {item.sucChua ? (
+          <span className="rounded-full bg-white px-2 py-1">
+            {item.sucChua} khách
+          </span>
+        ) : null}
+        {item.soGiuong ? (
+          <span className="rounded-full bg-white px-2 py-1">
+            {item.soGiuong} giường
+          </span>
+        ) : null}
+        {item.dienTich ? (
+          <span className="rounded-full bg-white px-2 py-1">
+            {item.dienTich} m2
+          </span>
+        ) : null}
+      </div>
+
+      {amenities.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {amenities.map((amenity) => (
+            <span
+              key={`${item.idLoaiPhong}-${amenity}`}
+              className="rounded-full bg-white px-2 py-1 text-[11px] text-slate-600"
+            >
+              {amenity}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <p className="mt-2 text-sm font-semibold text-blue-700">
+        Từ {formatVND(item.giaThamKhao)} / đêm
+      </p>
+      <p className="text-xs text-slate-500">
+        Còn trống {item.soPhongTrong} phòng
+      </p>
+    </div>
   );
 }
 
