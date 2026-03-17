@@ -41,31 +41,36 @@ export default function QuanLyKhachHangPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="flex items-center gap-2 text-xl font-bold">
           <Users className="h-5 w-5 text-blue-600" />
           Quản lý khách hàng
         </h1>
-        <Button variant="outline" onClick={fetchData} className="gap-2">
+        <Button
+          variant="outline"
+          onClick={fetchData}
+          className="min-h-[44px] gap-2"
+        >
           <RefreshCw className="h-4 w-4" /> Làm mới
         </Button>
       </div>
 
       {/* Tìm kiếm */}
-      <form onSubmit={handleSearch} className="flex gap-2">
+      <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Tìm theo tên, email, SĐT, CCCD..."
-          className="max-w-sm"
+          className="min-h-[44px] w-full sm:max-w-sm"
         />
-        <Button type="submit" className="gap-2">
+        <Button type="submit" className="min-h-[44px] gap-2">
           <Search className="h-4 w-4" /> Tìm
         </Button>
         {query && (
           <Button
             type="button"
             variant="outline"
+            className="min-h-[44px]"
             onClick={() => {
               setSearch("");
               setQuery("");
@@ -89,50 +94,91 @@ export default function QuanLyKhachHangPage() {
                 : "Chưa có khách hàng nào."}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    <th className="px-4 py-3">Họ tên</th>
-                    <th className="px-4 py-3">SĐT</th>
-                    <th className="px-4 py-3">Email</th>
-                    <th className="px-4 py-3">CCCD / Hộ chiếu</th>
-                    <th className="px-4 py-3">Địa chỉ</th>
-                    <th className="px-4 py-3">Số đặt phòng</th>
-                    <th className="px-4 py-3">Ngày đăng ký</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {danhSach.map((kh) => (
-                    <tr key={kh.idKhachHang} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium">{kh.hoTen}</td>
-                      <td className="px-4 py-3 text-gray-600">{kh.sdt}</td>
-                      <td className="px-4 py-3 text-gray-600">{kh.email}</td>
-                      <td className="px-4 py-3 font-mono text-xs">
-                        {kh.cccd_passport}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">
+            <>
+              <div className="space-y-3 px-4 pb-4 lg:hidden">
+                {danhSach.map((kh) => (
+                  <div
+                    key={kh.idKhachHang}
+                    className="space-y-2 rounded-xl border border-slate-200 bg-white p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {kh.hoTen}
+                      </p>
+                      <span className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded-full bg-blue-100 px-2 text-sm font-semibold text-blue-700">
+                        {kh._count?.phieuDatPhong ?? 0}
+                      </span>
+                    </div>
+                    <div className="space-y-1 text-sm text-slate-700">
+                      <p>
+                        <span className="font-medium">SĐT:</span> {kh.sdt}
+                      </p>
+                      <p>
+                        <span className="font-medium">Email:</span> {kh.email}
+                      </p>
+                      <p>
+                        <span className="font-medium">CCCD/Hộ chiếu:</span>{" "}
+                        <span className="font-mono">{kh.cccd_passport}</span>
+                      </p>
+                      <p>
+                        <span className="font-medium">Địa chỉ:</span>{" "}
                         {kh.diaChi}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
-                          {kh._count?.phieuDatPhong ?? 0}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {kh.createdAt ? formatDate(kh.createdAt) : "—"}
-                        </span>
-                      </td>
+                      </p>
+                      <p className="inline-flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        {kh.createdAt ? formatDate(kh.createdAt) : "—"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3">Họ tên</th>
+                      <th className="px-4 py-3">SĐT</th>
+                      <th className="px-4 py-3">Email</th>
+                      <th className="px-4 py-3">CCCD / Hộ chiếu</th>
+                      <th className="px-4 py-3">Địa chỉ</th>
+                      <th className="px-4 py-3">Số đặt phòng</th>
+                      <th className="px-4 py-3">Ngày đăng ký</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y">
+                    {danhSach.map((kh) => (
+                      <tr key={kh.idKhachHang} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-medium">{kh.hoTen}</td>
+                        <td className="px-4 py-3 text-gray-600">{kh.sdt}</td>
+                        <td className="px-4 py-3 text-gray-600">{kh.email}</td>
+                        <td className="px-4 py-3 font-mono text-xs">
+                          {kh.cccd_passport}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">
+                          {kh.diaChi}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+                            {kh._count?.phieuDatPhong ?? 0}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {kh.createdAt ? formatDate(kh.createdAt) : "—"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
               <div className="border-t px-4 py-2 text-xs text-gray-400">
                 {danhSach.length} khách hàng
               </div>
-            </div>
+            </>
           )}
         </CardContent>
       </Card>

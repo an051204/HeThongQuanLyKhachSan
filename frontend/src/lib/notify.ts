@@ -82,6 +82,9 @@ function notify(
     id: options.id,
     description: options.description,
     duration: options.duration ?? DEFAULT_DURATION[level],
+    className:
+      "w-[90vw] text-sm line-clamp-2 " +
+      "md:w-auto md:text-base md:line-clamp-none",
   };
 
   if (level === "success") {

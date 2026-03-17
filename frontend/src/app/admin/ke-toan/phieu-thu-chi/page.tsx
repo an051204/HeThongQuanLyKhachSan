@@ -178,12 +178,16 @@ export default function CashVoucherPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="flex items-center gap-2 text-xl font-bold">
           <ReceiptText className="h-5 w-5 text-indigo-700" /> Quản lý phiếu
           thu/chi
         </h1>
-        <Button variant="outline" className="gap-2" onClick={fetchData}>
+        <Button
+          variant="outline"
+          className="min-h-[44px] gap-2"
+          onClick={fetchData}
+        >
           <RefreshCw className="h-4 w-4" /> Làm mới
         </Button>
       </div>
@@ -225,7 +229,7 @@ export default function CashVoucherPage() {
             <h2 className="text-base font-semibold">Tạo phiếu mới</h2>
             <div className="grid gap-3 md:grid-cols-2">
               <select
-                className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+                className="min-h-[44px] rounded-md border border-slate-200 px-3 text-sm"
                 value={form.type}
                 onChange={(e) =>
                   setForm((prev) => ({
@@ -238,7 +242,7 @@ export default function CashVoucherPage() {
                 <option value="CHI">Phiếu chi</option>
               </select>
               <select
-                className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+                className="min-h-[44px] rounded-md border border-slate-200 px-3 text-sm"
                 value={form.method}
                 onChange={(e) =>
                   setForm((prev) => ({
@@ -292,7 +296,7 @@ export default function CashVoucherPage() {
               }
             />
             <Button
-              className="w-full bg-indigo-600 hover:bg-indigo-700"
+              className="min-h-[44px] w-full bg-indigo-600 hover:bg-indigo-700"
               loading={submitting}
               onClick={handleCreateVoucher}
             >
@@ -308,9 +312,10 @@ export default function CashVoucherPage() {
                 placeholder="Tìm kiếm theo mã/mô tả"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                className="min-h-[44px]"
               />
               <select
-                className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+                className="min-h-[44px] rounded-md border border-slate-200 px-3 text-sm"
                 value={typeFilter}
                 onChange={(e) =>
                   setTypeFilter(e.target.value as "" | CashVoucherType)
@@ -321,7 +326,7 @@ export default function CashVoucherPage() {
                 <option value="CHI">Phiếu chi</option>
               </select>
               <select
-                className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+                className="min-h-[44px] rounded-md border border-slate-200 px-3 text-sm"
                 value={statusFilter}
                 onChange={(e) =>
                   setStatusFilter(e.target.value as "" | CashVoucherStatus)
@@ -359,81 +364,161 @@ export default function CashVoucherPage() {
                 Không có chứng từ nào.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
-                      <th className="px-3 py-2">Mã phiếu</th>
-                      <th className="px-3 py-2">Loại</th>
-                      <th className="px-3 py-2">Số tiền</th>
-                      <th className="px-3 py-2">Phương thức</th>
-                      <th className="px-3 py-2">Ngày</th>
-                      <th className="px-3 py-2">Trạng thái</th>
-                      <th className="px-3 py-2 text-right">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {items.map((voucher) => (
-                      <tr key={voucher.id}>
-                        <td className="px-3 py-2">
-                          <p className="font-medium">{voucher.voucherNo}</p>
-                          <p className="text-xs text-gray-500">
+              <>
+                <div className="space-y-3 lg:hidden">
+                  {items.map((voucher) => (
+                    <div
+                      key={voucher.id}
+                      className="space-y-3 rounded-xl border border-slate-200 bg-white p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {voucher.voucherNo}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-600">
                             {voucher.description}
                           </p>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs font-medium ${
-                              voucher.type === "THU"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-rose-100 text-rose-700"
-                            }`}
-                          >
-                            {voucher.type === "THU" ? "Thu" : "Chi"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 font-semibold">
+                        </div>
+                        <span
+                          className={`rounded-full px-2 py-1 text-sm font-medium ${
+                            voucher.type === "THU"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-rose-100 text-rose-700"
+                          }`}
+                        >
+                          {voucher.type === "THU" ? "Thu" : "Chi"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm text-slate-700">
+                        <p>
+                          <span className="font-medium">Số tiền:</span>{" "}
                           {formatVND(Number(voucher.amount))}
-                        </td>
-                        <td className="px-3 py-2">
+                        </p>
+                        <p>
+                          <span className="font-medium">Phương thức:</span>{" "}
                           {METHOD_LABEL[voucher.method]}
-                        </td>
-                        <td className="px-3 py-2 text-xs">
+                        </p>
+                        <p>
+                          <span className="font-medium">Ngày:</span>{" "}
                           {formatDate(voucher.occurredAt)}
-                        </td>
-                        <td className="px-3 py-2">
+                        </p>
+                        <p>
+                          <span className="font-medium">Trạng thái:</span>{" "}
                           {STATUS_LABEL[voucher.status]}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {voucher.status === "DRAFT" ? (
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                size="sm"
-                                className="h-7 gap-1 bg-emerald-600 px-2 text-xs hover:bg-emerald-700"
-                                loading={actionId === `confirm:${voucher.id}`}
-                                onClick={() => handleConfirmVoucher(voucher.id)}
-                              >
-                                <CheckCircle2 className="h-3 w-3" /> Xác nhận
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 gap-1 border-rose-200 px-2 text-xs text-rose-700 hover:bg-rose-50"
-                                loading={actionId === `cancel:${voucher.id}`}
-                                onClick={() => handleCancelVoucher(voucher.id)}
-                              >
-                                <XCircle className="h-3 w-3" /> Hủy
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400">-</span>
-                          )}
-                        </td>
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {voucher.status === "DRAFT" ? (
+                          <>
+                            <Button
+                              className="min-h-[44px] gap-1 bg-emerald-600 px-3 text-sm hover:bg-emerald-700"
+                              loading={actionId === `confirm:${voucher.id}`}
+                              onClick={() => handleConfirmVoucher(voucher.id)}
+                            >
+                              <CheckCircle2 className="h-4 w-4" /> Xác nhận
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="min-h-[44px] gap-1 border-rose-200 px-3 text-sm text-rose-700 hover:bg-rose-50"
+                              loading={actionId === `cancel:${voucher.id}`}
+                              onClick={() => handleCancelVoucher(voucher.id)}
+                            >
+                              <XCircle className="h-4 w-4" /> Hủy
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="inline-flex min-h-[44px] items-center text-sm text-gray-400">
+                            Không có thao tác
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-x-auto lg:block">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                        <th className="px-3 py-2">Mã phiếu</th>
+                        <th className="px-3 py-2">Loại</th>
+                        <th className="px-3 py-2">Số tiền</th>
+                        <th className="px-3 py-2">Phương thức</th>
+                        <th className="px-3 py-2">Ngày</th>
+                        <th className="px-3 py-2">Trạng thái</th>
+                        <th className="px-3 py-2 text-right">Thao tác</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y">
+                      {items.map((voucher) => (
+                        <tr key={voucher.id}>
+                          <td className="px-3 py-2">
+                            <p className="font-medium">{voucher.voucherNo}</p>
+                            <p className="text-xs text-gray-500">
+                              {voucher.description}
+                            </p>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-medium ${
+                                voucher.type === "THU"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-rose-100 text-rose-700"
+                              }`}
+                            >
+                              {voucher.type === "THU" ? "Thu" : "Chi"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-semibold">
+                            {formatVND(Number(voucher.amount))}
+                          </td>
+                          <td className="px-3 py-2">
+                            {METHOD_LABEL[voucher.method]}
+                          </td>
+                          <td className="px-3 py-2 text-xs">
+                            {formatDate(voucher.occurredAt)}
+                          </td>
+                          <td className="px-3 py-2">
+                            {STATUS_LABEL[voucher.status]}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {voucher.status === "DRAFT" ? (
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  className="h-7 gap-1 bg-emerald-600 px-2 text-xs hover:bg-emerald-700"
+                                  loading={actionId === `confirm:${voucher.id}`}
+                                  onClick={() =>
+                                    handleConfirmVoucher(voucher.id)
+                                  }
+                                >
+                                  <CheckCircle2 className="h-3 w-3" /> Xác nhận
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 gap-1 border-rose-200 px-2 text-xs text-rose-700 hover:bg-rose-50"
+                                  loading={actionId === `cancel:${voucher.id}`}
+                                  onClick={() =>
+                                    handleCancelVoucher(voucher.id)
+                                  }
+                                >
+                                  <XCircle className="h-3 w-3" /> Hủy
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

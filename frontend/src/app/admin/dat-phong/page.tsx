@@ -110,16 +110,20 @@ export default function QuanLyDatPhongPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-bold">Quản lý đặt phòng</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm theo mã phiếu, phòng, khách hàng..."
-            className="w-72"
+            className="min-h-[44px] w-full sm:w-72"
           />
-          <Button variant="outline" onClick={fetchData} className="gap-2">
+          <Button
+            variant="outline"
+            onClick={fetchData}
+            className="min-h-[44px] gap-2"
+          >
             <RefreshCw className="h-4 w-4" /> Làm mới
           </Button>
         </div>
@@ -131,7 +135,7 @@ export default function QuanLyDatPhongPage() {
           <button
             key={label}
             onClick={() => setActiveTab(value)}
-            className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               activeTab === value
                 ? "bg-white text-blue-700 shadow-sm"
                 : "text-gray-600 hover:text-gray-900"
@@ -154,6 +158,7 @@ export default function QuanLyDatPhongPage() {
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-[44px] text-sm"
                 disabled={!pagination.hasPreviousPage || loading}
                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               >
@@ -162,6 +167,7 @@ export default function QuanLyDatPhongPage() {
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-[44px] text-sm"
                 disabled={!pagination.hasNextPage || loading}
                 onClick={() => setPage((prev) => prev + 1)}
               >
@@ -178,66 +184,177 @@ export default function QuanLyDatPhongPage() {
               Không có phiếu đặt phòng nào.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    <th className="px-4 py-3">Mã phiếu</th>
-                    <th className="px-4 py-3">Khách hàng</th>
-                    <th className="px-4 py-3">Phòng</th>
-                    <th className="px-4 py-3">Ngày đến</th>
-                    <th className="px-4 py-3">Ngày đi</th>
-                    <th className="px-4 py-3">Tiền cọc</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {danhSach.map((phieu) => (
-                    <tr key={phieu.maDatPhong} className="hover:bg-gray-50">
-                      <td
-                        className="max-w-[220px] px-4 py-3 font-mono text-[11px] text-gray-500"
-                        title={phieu.maDatPhong}
-                      >
-                        <span className="break-all">{phieu.maDatPhong}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium">
+            <>
+              <div className="space-y-3 px-4 pb-4 lg:hidden">
+                {danhSach.map((phieu) => (
+                  <div
+                    key={phieu.maDatPhong}
+                    className="space-y-3 rounded-xl border border-slate-200 bg-white p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">
                           {phieu.khachHang?.hoTen ?? "—"}
                         </p>
-                        <p className="text-xs text-gray-400">
-                          {phieu.khachHang?.sdt ?? ""}
+                        <p className="mt-1 break-all font-mono text-sm text-slate-500">
+                          {phieu.maDatPhong}
                         </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium">Phòng {phieu.soPhong}</p>
-                        <p className="text-xs text-gray-400">
-                          {phieu.phong?.loaiPhong?.tenLoai ?? ""}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">{formatDate(phieu.ngayDen)}</td>
-                      <td className="px-4 py-3">{formatDate(phieu.ngayDi)}</td>
-                      <td className="px-4 py-3">
+                      </div>
+                      <Badge variant={BADGE_VARIANT[phieu.trangThai]}>
+                        {TRANG_THAI_DAT_LABEL[phieu.trangThai]}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm text-slate-700">
+                      <p>
+                        <span className="font-medium">SĐT:</span>{" "}
+                        {phieu.khachHang?.sdt ?? "—"}
+                      </p>
+                      <p>
+                        <span className="font-medium">Phòng:</span>{" "}
+                        {phieu.soPhong}
+                      </p>
+                      <p>
+                        <span className="font-medium">Loại:</span>{" "}
+                        {phieu.phong?.loaiPhong?.tenLoai ?? "—"}
+                      </p>
+                      <p>
+                        <span className="font-medium">Tiền cọc:</span>{" "}
                         {formatVND(Number(phieu.tienCoc))}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={BADGE_VARIANT[phieu.trangThai]}>
-                          {TRANG_THAI_DAT_LABEL[phieu.trangThai]}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-1">
-                          {phieu.trangThai === "ChoDuyet" && (
-                            <>
-                              <Button
-                                size="sm"
-                                className="h-7 gap-1 bg-green-600 px-2 text-xs hover:bg-green-700"
-                                loading={actionLoading === phieu.maDatPhong}
-                                onClick={() => handleXacNhan(phieu.maDatPhong)}
-                              >
-                                <CheckCircle className="h-3 w-3" />
-                                Xác nhận
-                              </Button>
+                      </p>
+                      <p>
+                        <span className="font-medium">Ngày đến:</span>{" "}
+                        {formatDate(phieu.ngayDen)}
+                      </p>
+                      <p>
+                        <span className="font-medium">Ngày đi:</span>{" "}
+                        {formatDate(phieu.ngayDi)}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {phieu.trangThai === "ChoDuyet" && (
+                        <>
+                          <Button
+                            className="min-h-[44px] gap-1 bg-green-600 px-3 text-sm hover:bg-green-700"
+                            loading={actionLoading === phieu.maDatPhong}
+                            onClick={() => handleXacNhan(phieu.maDatPhong)}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            Xác nhận
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="min-h-[44px] gap-1 px-3 text-sm text-red-600 hover:bg-red-50"
+                            loading={actionLoading === phieu.maDatPhong}
+                            onClick={() => handleHuy(phieu.maDatPhong)}
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Hủy
+                          </Button>
+                        </>
+                      )}
+                      {phieu.trangThai === "DaXacNhan" && (
+                        <Button
+                          variant="outline"
+                          className="min-h-[44px] gap-1 px-3 text-sm text-red-600 hover:bg-red-50"
+                          loading={actionLoading === phieu.maDatPhong}
+                          onClick={() => handleHuy(phieu.maDatPhong)}
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Hủy
+                        </Button>
+                      )}
+                      {(phieu.trangThai === "DaCheckOut" ||
+                        phieu.trangThai === "DaHuy") && (
+                        <span className="inline-flex min-h-[44px] items-center text-sm text-gray-400">
+                          Không có thao tác
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3">Mã phiếu</th>
+                      <th className="px-4 py-3">Khách hàng</th>
+                      <th className="px-4 py-3">Phòng</th>
+                      <th className="px-4 py-3">Ngày đến</th>
+                      <th className="px-4 py-3">Ngày đi</th>
+                      <th className="px-4 py-3">Tiền cọc</th>
+                      <th className="px-4 py-3">Trạng thái</th>
+                      <th className="px-4 py-3 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {danhSach.map((phieu) => (
+                      <tr key={phieu.maDatPhong} className="hover:bg-gray-50">
+                        <td
+                          className="max-w-[220px] px-4 py-3 font-mono text-[11px] text-gray-500"
+                          title={phieu.maDatPhong}
+                        >
+                          <span className="break-all">{phieu.maDatPhong}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium">
+                            {phieu.khachHang?.hoTen ?? "—"}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {phieu.khachHang?.sdt ?? ""}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium">Phòng {phieu.soPhong}</p>
+                          <p className="text-xs text-gray-400">
+                            {phieu.phong?.loaiPhong?.tenLoai ?? ""}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          {formatDate(phieu.ngayDen)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {formatDate(phieu.ngayDi)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {formatVND(Number(phieu.tienCoc))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={BADGE_VARIANT[phieu.trangThai]}>
+                            {TRANG_THAI_DAT_LABEL[phieu.trangThai]}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-1">
+                            {phieu.trangThai === "ChoDuyet" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="h-7 gap-1 bg-green-600 px-2 text-xs hover:bg-green-700"
+                                  loading={actionLoading === phieu.maDatPhong}
+                                  onClick={() =>
+                                    handleXacNhan(phieu.maDatPhong)
+                                  }
+                                >
+                                  <CheckCircle className="h-3 w-3" />
+                                  Xác nhận
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 gap-1 px-2 text-xs text-red-600 hover:bg-red-50"
+                                  loading={actionLoading === phieu.maDatPhong}
+                                  onClick={() => handleHuy(phieu.maDatPhong)}
+                                >
+                                  <XCircle className="h-3 w-3" />
+                                  Hủy
+                                </Button>
+                              </>
+                            )}
+                            {phieu.trangThai === "DaXacNhan" && (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -248,31 +365,19 @@ export default function QuanLyDatPhongPage() {
                                 <XCircle className="h-3 w-3" />
                                 Hủy
                               </Button>
-                            </>
-                          )}
-                          {phieu.trangThai === "DaXacNhan" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 gap-1 px-2 text-xs text-red-600 hover:bg-red-50"
-                              loading={actionLoading === phieu.maDatPhong}
-                              onClick={() => handleHuy(phieu.maDatPhong)}
-                            >
-                              <XCircle className="h-3 w-3" />
-                              Hủy
-                            </Button>
-                          )}
-                          {(phieu.trangThai === "DaCheckOut" ||
-                            phieu.trangThai === "DaHuy") && (
-                            <span className="text-xs text-gray-400">—</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                            )}
+                            {(phieu.trangThai === "DaCheckOut" ||
+                              phieu.trangThai === "DaHuy") && (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

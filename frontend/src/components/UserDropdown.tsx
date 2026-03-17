@@ -185,7 +185,7 @@ export default function UserDropdown({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-left transition-colors hover:border-cyan-200 hover:bg-cyan-50/50"
+        className="flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-cyan-200 hover:bg-cyan-50/50"
       >
         <span className="grid h-8 w-8 place-items-center rounded-full bg-cyan-600 text-sm font-semibold text-white shadow-sm">
           {avatarLabel}
@@ -217,7 +217,7 @@ export default function UserDropdown({
             <Link
               href={profileHref}
               onClick={() => setIsOpen(false)}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
+              className="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
             >
               <User className="h-4 w-4" />
               Hồ sơ cá nhân
@@ -231,7 +231,7 @@ export default function UserDropdown({
                     key={href}
                     href={href}
                     onClick={() => setIsOpen(false)}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
+                    className="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
                   >
                     <Icon className="h-4 w-4" />
                     {label}
@@ -245,7 +245,7 @@ export default function UserDropdown({
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
+              className="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
             >
               <LogOut className="h-4 w-4" />
               Đăng xuất
