@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { UserPlus, Eye, EyeOff, User } from "lucide-react";
 import apiClient from "@/lib/api";
@@ -31,11 +31,22 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Hiển thị lỗi chi tiết từ backend
+  function isValidEmail(email: string) {
+    // Đơn giản, chỉ kiểm tra có @ và .
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (form.matKhau !== form.xacNhanMatKhau) {
       error("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
+    if (!isValidEmail(form.taiKhoan)) {
+      error("Email không hợp lệ.");
       return;
     }
 
@@ -53,8 +64,20 @@ export default function RegisterPage() {
 
       success("Đăng ký thành công");
       router.replace("/login");
-    } catch (err) {
-      error(err instanceof Error ? err.message : "Đăng ký thất bại.");
+    } catch (err: any) {
+      // Hiển thị chi tiết lỗi validate 422
+      let msg = "Đăng ký thất bại.";
+      if (
+        err?.response?.status === 422 &&
+        Array.isArray(err?.response?.data?.errors)
+      ) {
+        msg = err.response.data.errors.map((e: any) => e.msg).join("\n");
+      } else if (err?.response?.data?.message) {
+        msg = err.response.data.message;
+      } else if (err instanceof Error && err.message) {
+        msg = err.message;
+      }
+      error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -115,10 +138,14 @@ export default function RegisterPage() {
               </label>
               <input
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={form.sdt}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, sdt: e.target.value }))
-                }
+                onChange={(e) => {
+                  // Chỉ cho nhập số
+                  const val = e.target.value.replace(/[^0-9+]/g, "");
+                  setForm((prev) => ({ ...prev, sdt: val }));
+                }}
                 placeholder="0901234567"
                 disabled={submitting}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 disabled:bg-gray-50"
