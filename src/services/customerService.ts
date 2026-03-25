@@ -1,3 +1,31 @@
+// ── Xóa khách hàng theo id ────────────────────────────────
+export async function xoaKhachHang(idKhachHang: string) {
+  // Kiểm tra tồn tại
+  const kh = await prisma.khachHang.findUnique({ where: { idKhachHang } });
+  if (!kh) {
+    throw new AppError(404, `Không tìm thấy khách hàng: ${idKhachHang}`);
+  }
+  // Lấy danh sách các phiếu đặt phòng liên quan
+  const phieuList = await prisma.phieuDatPhong.findMany({
+    where: { idKhachHang },
+    select: { maDatPhong: true },
+  });
+  const maDatPhongList = phieuList.map((p) => p.maDatPhong);
+  // Xóa hóa đơn liên quan trước (nếu có)
+  if (maDatPhongList.length > 0) {
+    await prisma.hoaDon.deleteMany({
+      where: { maDatPhong: { in: maDatPhongList } },
+    });
+  }
+  // Xóa toàn bộ phiếu đặt phòng liên quan
+  await prisma.phieuDatPhong.deleteMany({ where: { idKhachHang } });
+  // Xóa khách hàng
+  await prisma.khachHang.delete({ where: { idKhachHang } });
+  return {
+    success: true,
+    message: "Đã xóa khách hàng, các phiếu đặt phòng và hóa đơn liên quan.",
+  };
+}
 // ============================================================
 // src/services/customerService.ts
 // CRUD khách hàng + upsert by email
@@ -31,17 +59,6 @@ export async function upsertKhachHang(input: UpsertKhachHangInput) {
       success: true,
       data: { idKhachHang: updated.idKhachHang, isNew: false },
     };
-  }
-
-  // Kiểm tra CCCD trùng
-  const byCCCD = await prisma.khachHang.findUnique({
-    where: { cccd_passport },
-  });
-  if (byCCCD) {
-    throw new AppError(
-      409,
-      `CCCD/Hộ chiếu ${cccd_passport} đã được đăng ký với email khác.`,
-    );
   }
 
   const newKH = await prisma.khachHang.create({

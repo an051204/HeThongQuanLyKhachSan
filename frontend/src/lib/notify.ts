@@ -110,6 +110,10 @@ export function notifySuccess(message: string, options?: NotifyOptions) {
 }
 
 export function notifyError(message: string, options?: NotifyOptions) {
+  if (message && message.includes("Không có quyền. Yêu cầu vai trò")) {
+    // Không hiển thị thông báo lỗi quyền vai trò
+    return;
+  }
   notify("error", message, options);
 }
 

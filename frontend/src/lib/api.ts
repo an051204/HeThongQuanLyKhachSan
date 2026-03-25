@@ -490,6 +490,14 @@ export async function xuatHoaDonHtml(maHoaDon: string): Promise<Blob> {
   return response.data as Blob;
 }
 
+// Xuất hóa đơn PDF
+export async function xuatHoaDonPdf(maHoaDon: string): Promise<Blob> {
+  const response = await apiClient.get(`/hoa-don/${maHoaDon}/xuat-pdf`, {
+    responseType: "blob",
+  });
+  return response.data as Blob;
+}
+
 // ============================================================
 // KHÁCH HÀNG API
 // ============================================================
@@ -827,4 +835,9 @@ export async function thuTienCongNoDoiTac(
     }>
   >(`/ke-toan/cong-no-doi-tac/${settlementId}/thu-tien`, payload);
   return data.data!;
+}
+
+/** Xóa khách hàng (admin) */
+export async function deleteKhachHang(idKhachHang: string): Promise<void> {
+  await apiClient.delete(`/khach-hang/${idKhachHang}`);
 }

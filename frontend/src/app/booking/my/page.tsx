@@ -67,21 +67,8 @@ export default function MyBookingPage() {
   }
 
   if (!isCustomer) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Trang này dành cho tài khoản khách hàng</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href="/admin/dashboard"
-            className="inline-flex rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-800"
-          >
-            Quay về dashboard
-          </Link>
-        </CardContent>
-      </Card>
-    );
+    // Không hiển thị gì hoặc có thể chuyển hướng về trang chủ
+    return null;
   }
 
   return (

@@ -491,27 +491,24 @@ export default function FrmQuanLyDanhMucPhong() {
           <CardContent className="p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.3em] text-cyan-200">
-                  Quan ly hien thi phong
-                </p>
                 <h2 className="text-2xl font-bold">
-                  Tinh chinh phong va loai phong
+                  Tinh chỉnh phòng và loại phòng
                 </h2>
                 <p className="max-w-2xl text-sm text-slate-200">
-                  Cap nhat mo ta, tien nghi, suc chua, gallery anh va gia de
-                  trang tim phong cua khach hien thi dung tinh than tung hang
-                  phong.
+                  Cập nhật mô tả, tiện nghi, sức chứa, gallery ảnh và giá để
+                  trang tìm phòng của khách hiển thị đúng tính chất từng hạng
+                  phòng.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={openCreateType}>
-                  <Building2 className="h-4 w-4" /> Them loai phong
+                  <Building2 className="h-4 w-4" /> Thêm loại phòng
                 </Button>
                 <Button
                   className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
                   onClick={openCreate}
                 >
-                  <Plus className="h-4 w-4" /> Them phong
+                  <Plus className="h-4 w-4" /> Thêm phòng
                 </Button>
               </div>
             </div>
@@ -521,21 +518,21 @@ export default function FrmQuanLyDanhMucPhong() {
         <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
           <SummaryCard
             icon={<Building2 className="h-4 w-4 text-cyan-700" />}
-            label="Loai phong"
+            label="Loại phòng"
             value={String(typePagination.totalItems)}
-            description="Danh muc dang hien thi"
+            description="Danh mục đang hiển thị"
           />
           <SummaryCard
             icon={<BedDouble className="h-4 w-4 text-blue-700" />}
-            label="Phong thuc te"
+            label="Phòng thực tế"
             value={String(roomPagination.totalItems)}
-            description="Phong dang quan ly"
+            description="Phòng đang quản lý"
           />
           <SummaryCard
             icon={<Images className="h-4 w-4 text-amber-700" />}
-            label="Anh gallery"
+            label="Ảnh gallery"
             value={String(tongAnhLoaiPhong)}
-            description="Anh phong dang luu"
+            description="Ảnh phòng đang lưu"
           />
         </div>
       </div>

@@ -75,7 +75,7 @@ export default function FrmLeTanCheckIn() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
+    <div className="mx-auto max-w-4xl space-y-4 overflow-x-hidden">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -83,7 +83,6 @@ export default function FrmLeTanCheckIn() {
             Nhận phòng (Check-in)
           </CardTitle>
         </CardHeader>
-
         <CardContent className="space-y-4">
           <form onSubmit={handleTim} className="flex gap-2">
             <div className="flex-1 space-y-1">
@@ -99,7 +98,6 @@ export default function FrmLeTanCheckIn() {
               <Search className="h-4 w-4" /> Tra cứu
             </Button>
           </form>
-
           {phieu && (
             <div className="space-y-3 rounded-lg border border-gray-200 p-4">
               <div className="rounded-xl bg-gradient-to-r from-blue-50 via-cyan-50 to-emerald-50 p-3">
@@ -110,7 +108,6 @@ export default function FrmLeTanCheckIn() {
                   Phòng {phieu.soPhong} - Loại: {tenLoaiPhong}
                 </p>
               </div>
-
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Thông tin phiếu đặt phòng</h3>
                 <Badge
@@ -124,7 +121,6 @@ export default function FrmLeTanCheckIn() {
                   {TRANG_THAI_DAT_LABEL[phieu.trangThai]}
                 </Badge>
               </div>
-
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <InfoRow
                   label="Khách hàng"
@@ -140,7 +136,6 @@ export default function FrmLeTanCheckIn() {
                   value={formatVND(Number(phieu.tienCoc))}
                 />
               </div>
-
               <Button
                 className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300"
                 loading={checking}
@@ -150,7 +145,6 @@ export default function FrmLeTanCheckIn() {
                 <CheckCircle className="h-4 w-4" />
                 Xác nhận Check-in
               </Button>
-
               {!isCheckInAllowed && (
                 <p className="text-xs text-red-600">
                   Nút đã bị khóa vì booking không còn ở trạng thái cho phép
@@ -161,7 +155,6 @@ export default function FrmLeTanCheckIn() {
           )}
         </CardContent>
       </Card>
-
       <RecentHistoryTable />
     </div>
   );

@@ -7,6 +7,7 @@ import {
   getInvoice,
   payInvoice,
   exportInvoice,
+  exportInvoicePdf,
 } from "../controllers/invoiceController";
 
 const router = Router();
@@ -29,5 +30,12 @@ router.patch(
 
 // GET /api/hoa-don/:maHoaDon/xuat — xuất hóa đơn HTML
 router.get("/:maHoaDon/xuat", [param("maHoaDon").notEmpty()], exportInvoice);
+
+// GET /api/hoa-don/:maHoaDon/xuat-pdf — xuất hóa đơn PDF
+router.get(
+  "/:maHoaDon/xuat-pdf",
+  [param("maHoaDon").notEmpty()],
+  exportInvoicePdf,
+);
 
 export default router;

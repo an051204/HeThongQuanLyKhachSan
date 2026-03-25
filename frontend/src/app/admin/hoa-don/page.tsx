@@ -13,6 +13,7 @@ import {
   getDanhSachHoaDonPaged,
   thanhToanHoaDon,
   xuatHoaDonHtml,
+  xuatHoaDonPdf,
 } from "@/lib/api";
 import { formatDate, formatVND } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -123,14 +124,25 @@ export default function QuanLyHoaDonPage() {
     }
   }
 
-  async function handleXuatHoaDon(maHoaDon: string) {
+  async function handleXuatHoaDon(
+    maHoaDon: string,
+    type: "pdf" | "html" = "pdf",
+  ) {
     setActionLoading(`export:${maHoaDon}`);
     try {
-      const blob = await xuatHoaDonHtml(maHoaDon);
+      let blob: Blob;
+      let ext: string;
+      if (type === "pdf") {
+        blob = await xuatHoaDonPdf(maHoaDon);
+        ext = "pdf";
+      } else {
+        blob = await xuatHoaDonHtml(maHoaDon);
+        ext = "html";
+      }
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `hoa-don-${maHoaDon}.html`;
+      link.download = `hoa-don-${maHoaDon}.` + ext;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -228,7 +240,14 @@ export default function QuanLyHoaDonPage() {
             </div>
           ) : (
             <>
-              <div className="space-y-3 px-4 pb-4 lg:hidden">
+              <div
+                className="space-y-3 px-4 pb-4 lg:hidden"
+                style={{
+                  maxHeight: "70vh",
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                }}
+              >
                 {hoaDonList.map((hd) => {
                   const choCheckOut =
                     hd.trangThai === "ChuaThanhToan" &&
@@ -327,10 +346,25 @@ export default function QuanLyHoaDonPage() {
                               loading={
                                 actionLoading === `export:${hd.maHoaDon}`
                               }
-                              onClick={() => handleXuatHoaDon(hd.maHoaDon)}
+                              onClick={() =>
+                                handleXuatHoaDon(hd.maHoaDon, "pdf")
+                              }
                             >
                               <Download className="h-4 w-4" />
-                              Xuất
+                              Xuất PDF
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="min-h-[44px] gap-1 px-3 text-sm"
+                              loading={
+                                actionLoading === `export:${hd.maHoaDon}`
+                              }
+                              onClick={() =>
+                                handleXuatHoaDon(hd.maHoaDon, "html")
+                              }
+                            >
+                              <Download className="h-4 w-4" />
+                              Xuất HTML
                             </Button>
                             {choCheckOut && (
                               <span className="inline-flex min-h-[44px] items-center text-sm text-amber-600">
@@ -344,15 +378,34 @@ export default function QuanLyHoaDonPage() {
                             )}
                           </>
                         ) : (
-                          <Button
-                            variant="outline"
-                            className="min-h-[44px] gap-1 px-3 text-sm"
-                            loading={actionLoading === `export:${hd.maHoaDon}`}
-                            onClick={() => handleXuatHoaDon(hd.maHoaDon)}
-                          >
-                            <Download className="h-4 w-4" />
-                            Xuất
-                          </Button>
+                          <>
+                            <Button
+                              variant="outline"
+                              className="min-h-[44px] gap-1 px-3 text-sm"
+                              loading={
+                                actionLoading === `export:${hd.maHoaDon}`
+                              }
+                              onClick={() =>
+                                handleXuatHoaDon(hd.maHoaDon, "pdf")
+                              }
+                            >
+                              <Download className="h-4 w-4" />
+                              Xuất PDF
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="min-h-[44px] gap-1 px-3 text-sm"
+                              loading={
+                                actionLoading === `export:${hd.maHoaDon}`
+                              }
+                              onClick={() =>
+                                handleXuatHoaDon(hd.maHoaDon, "html")
+                              }
+                            >
+                              <Download className="h-4 w-4" />
+                              Xuất HTML
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -360,8 +413,18 @@ export default function QuanLyHoaDonPage() {
                 })}
               </div>
 
-              <div className="hidden overflow-x-auto lg:block">
-                <table className="w-full text-sm">
+              <div
+                className="hidden lg:block"
+                style={{
+                  maxHeight: "70vh",
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                }}
+              >
+                <table
+                  className="w-full text-sm"
+                  style={{ tableLayout: "fixed", wordBreak: "break-word" }}
+                >
                   <thead>
                     <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                       <th className="px-4 py-3">Mã hóa đơn</th>

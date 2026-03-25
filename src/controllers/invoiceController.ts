@@ -8,6 +8,38 @@ import {
   thanhToanHoaDon,
   xuatHoaDonHtml,
 } from "../services/invoiceService";
+import puppeteer from "puppeteer";
+// Xuất hóa đơn PDF (dùng puppeteer)
+export async function exportInvoicePdf(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  let browser = null;
+  try {
+    const result = await xuatHoaDonHtml(req.params.maHoaDon);
+    browser = await puppeteer.launch({ args: ["--no-sandbox"] });
+    const page = await browser.newPage();
+    await page.setContent(result.content, { waitUntil: "networkidle0" });
+    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${result.fileName.replace(/\.html?$/, ".pdf")}"`,
+    );
+    res.send(pdfBuffer);
+  } catch (err) {
+    next(err);
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error("Không thể đóng browser Puppeteer:", closeErr);
+      }
+    }
+  }
+}
 
 export async function listInvoices(
   req: Request,

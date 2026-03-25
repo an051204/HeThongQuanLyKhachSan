@@ -384,6 +384,32 @@ async function createBookingAfterPaid(
     return created;
   });
 
+  try {
+    const { EmailService } = await import("./emailService");
+
+    // extraData và checkIn/checkOut đã được lấy và parse ở phía trên của hàm này
+    const dataEmail = {
+      customerName: extraData.guestName,
+      bookingCode: booking.maDatPhong,
+      roomDetail: `Phòng ${extraData.roomId}`,
+      checkinDate: checkIn.toLocaleDateString("vi-VN"),
+      checkoutDate: checkOut.toLocaleDateString("vi-VN"),
+      totalAmount: normalizeCurrency(extraData.totalPrice).toLocaleString(
+        "vi-VN",
+      ),
+    };
+
+    await EmailService.sendBookingConfirmation(extraData.guestEmail, dataEmail);
+    console.log(
+      `[MoMo Service] Đã gửi email xác nhận đặt phòng cho: ${extraData.guestEmail}`,
+    );
+  } catch (err) {
+    console.error(
+      "[MoMo Service] Lỗi gửi email xác nhận sau khi thanh toán:",
+      err,
+    );
+  }
+
   return booking.maDatPhong;
 }
 
