@@ -1,3 +1,4 @@
+import { xoaKhachHang } from "../services/customerService";
 // src/controllers/customerController.ts
 
 import { Request, Response, NextFunction } from "express";
@@ -21,7 +22,12 @@ export async function upsertCustomer(
   try {
     const result = await upsertKhachHang(req.body);
     res.status(result.data.isNew ? 201 : 200).json(result);
-  } catch (err) {
+  } catch (err: any) {
+    // Nếu là lỗi trùng CCCD/hộ chiếu (409), trả về message rõ ràng cho client
+    if (err.statusCode === 409) {
+      res.status(409).json({ success: false, message: err.message });
+      return;
+    }
     next(err);
   }
 }
@@ -47,6 +53,20 @@ export async function getCustomer(
 ): Promise<void> {
   try {
     const result = await layChiTietKhachHang(req.params.id);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/khach-hang/:id — xóa khách hàng
+export async function deleteCustomer(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const result = await xoaKhachHang(req.params.id);
     res.json(result);
   } catch (err) {
     next(err);

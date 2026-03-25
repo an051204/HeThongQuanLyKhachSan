@@ -6,7 +6,7 @@ import { Users, Search, RefreshCw, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getDanhSachKhachHang } from "@/lib/api";
+import { getDanhSachKhachHang, deleteKhachHang } from "@/lib/api";
 import { useAppToast } from "@/hooks/useAppToast";
 import { formatDate } from "@/lib/utils";
 import type { KhachHang } from "@/types";
@@ -38,6 +38,16 @@ export default function QuanLyKhachHangPage() {
     e.preventDefault();
     setQuery(search.trim());
   }
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa khách hàng này?")) return;
+    try {
+      await deleteKhachHang(id);
+      fetchData();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Lỗi xóa khách hàng.");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -129,12 +139,30 @@ export default function QuanLyKhachHangPage() {
                         {kh.createdAt ? formatDate(kh.createdAt) : "—"}
                       </p>
                     </div>
+                    <div className="pt-2 text-right">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(kh.idKhachHang)}
+                      >
+                        Xóa
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
 
-              <div className="hidden overflow-x-auto lg:block">
-                <table className="w-full text-sm">
+              <div
+                style={{
+                  maxHeight: "70vh",
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                }}
+              >
+                <table
+                  className="min-w-full divide-y divide-gray-200"
+                  style={{ tableLayout: "fixed", wordBreak: "break-word" }}
+                >
                   <thead>
                     <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                       <th className="px-4 py-3">Họ tên</th>
@@ -144,6 +172,7 @@ export default function QuanLyKhachHangPage() {
                       <th className="px-4 py-3">Địa chỉ</th>
                       <th className="px-4 py-3">Số đặt phòng</th>
                       <th className="px-4 py-3">Ngày đăng ký</th>
+                      <th className="px-4 py-3">Hành động</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -168,6 +197,15 @@ export default function QuanLyKhachHangPage() {
                             <Calendar className="h-3 w-3" />
                             {kh.createdAt ? formatDate(kh.createdAt) : "—"}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(kh.idKhachHang)}
+                          >
+                            Xóa
+                          </Button>
                         </td>
                       </tr>
                     ))}

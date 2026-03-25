@@ -231,7 +231,7 @@ export default function FrmLeTanCheckOut() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
+    <div className="mx-auto max-w-4xl space-y-4 overflow-x-hidden">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

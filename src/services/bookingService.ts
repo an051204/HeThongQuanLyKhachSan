@@ -164,6 +164,27 @@ export async function taoDatPhong(input: TaoDatPhongInput) {
     });
   });
 
+  // Gửi email xác nhận đặt phòng
+  try {
+    const { hoTen, email } = phieuDatPhong.khachHang;
+    const roomDetail = `${phieuDatPhong.phong.loaiPhong.tenLoai} - ${phieuDatPhong.soPhong}`;
+    const data = {
+      customerName: hoTen,
+      bookingCode: phieuDatPhong.maDatPhong,
+      roomDetail,
+      checkinDate: phieuDatPhong.ngayDen.toLocaleDateString("vi-VN"),
+      checkoutDate: phieuDatPhong.ngayDi.toLocaleDateString("vi-VN"),
+      // Đã sửa lỗi TypeScript ở đây: Ép kiểu về Number trước khi toLocaleString
+      totalAmount: phieuDatPhong.hoaDon?.tongTien
+        ? Number(phieuDatPhong.hoaDon.tongTien).toLocaleString("vi-VN")
+        : "0",
+    };
+    const { EmailService } = await import("./emailService");
+    await EmailService.sendBookingConfirmation(email, data);
+  } catch (err) {
+    console.error("[bookingService] Lỗi gửi email xác nhận đặt phòng:", err);
+  }
+
   return {
     success: true,
     message:
@@ -362,6 +383,11 @@ export async function lichSuCheckInCheckOut30Ngay() {
           },
         },
       },
+      hoaDon: {
+        select: {
+          maHoaDon: true,
+        },
+      },
     },
     orderBy: {
       updatedAt: "desc",
@@ -379,6 +405,7 @@ export async function lichSuCheckInCheckOut30Ngay() {
     return {
       bookingId: booking.id ?? booking.maDatPhong,
       maDatPhong: booking.maDatPhong,
+      maHoaDon: booking.hoaDon?.maHoaDon || null,
       soPhong: booking.soPhong,
       tenLoaiPhong: booking.phong.loaiPhong?.tenLoai ?? null,
       tenKhachHang: booking.khachHang.hoTen,

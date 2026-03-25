@@ -175,7 +175,11 @@ export default function FrmDatPhong() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
+    await handleDatPhong(tienCoc, true);
+  }
 
+  // Đặt phòng với số tiền cọc tuỳ chọn (0 = trả sau)
+  async function handleDatPhong(tienCocValue: number, thanhToanCoc: boolean) {
     setLoading(true);
     try {
       const pendingBooking = {
@@ -195,7 +199,7 @@ export default function FrmDatPhong() {
           ngayDi,
           giaPhong,
           soDem,
-          tienCoc,
+          tienCoc: tienCocValue,
           tongTien: tienPhong,
         },
       };
@@ -204,7 +208,11 @@ export default function FrmDatPhong() {
         PENDING_BOOKING_KEY,
         JSON.stringify(pendingBooking),
       );
-      router.push("/thanh-toan");
+      if (thanhToanCoc) {
+        router.push("/thanh-toan");
+      } else {
+        router.push("/xac-nhan-dat-phong?traSau=1");
+      }
     } catch (err) {
       error(
         err instanceof Error
@@ -273,6 +281,7 @@ export default function FrmDatPhong() {
                   value={form.sdt}
                   onChange={handleChange}
                   autoComplete="tel"
+                  maxLength={10}
                 />
               </FormField>
 
@@ -303,6 +312,7 @@ export default function FrmDatPhong() {
                   placeholder="012345678901"
                   value={form.cccd_passport}
                   onChange={handleChange}
+                  maxLength={12}
                 />
               </FormField>
 

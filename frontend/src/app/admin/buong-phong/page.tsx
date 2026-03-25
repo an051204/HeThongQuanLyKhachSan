@@ -38,7 +38,7 @@ export default function BuongPhongPage() {
       Array.from(new Set(phongCanDon.map((room) => room.tang).filter(Boolean))),
     [phongCanDon],
   );
-
+  // ...existing code...
   async function handleDanhDauSach(soPhong: string) {
     setCleaningRoom(soPhong);
     try {

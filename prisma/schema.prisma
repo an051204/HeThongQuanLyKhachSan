@@ -116,7 +116,7 @@ model KhachHang {
   hoTen         String
   sdt           String
   email         String   @unique
-  cccd_passport String   @unique
+  cccd_passport String
   diaChi        String
   quocTich      String?
   ngaySinh      DateTime?

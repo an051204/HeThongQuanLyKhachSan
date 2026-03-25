@@ -238,6 +238,9 @@ async function updateCheckoutSuccessState(params: {
         trangThai: "DaCheckOut",
         actualCheckOutDate: booking.actualCheckOutDate ?? paidAt,
       },
+      include: {
+        khachHang: { select: { email: true } },
+      },
     });
 
     const roomUpdated = await tx.phong.update({
@@ -463,6 +466,12 @@ export async function thucHienCheckOut(input: CheckOutInput) {
     );
   }
 
+  // Cập nhật trạng thái phòng về CanDonDep ngay khi checkout
+  await prisma.phong.update({
+    where: { soPhong: phieu.soPhong },
+    data: { tinhTrang: "CanDonDep" },
+  });
+
   const [bookingSauTinhTien, hoaDonSauCapNhat, surcharges] = await Promise.all([
     prisma.phieuDatPhong.findUnique({
       where: { maDatPhong: transactionResult.maDatPhong },
@@ -549,6 +558,34 @@ export async function xacNhanThanhToanOffline(input: CheckoutOfflineInput) {
     idNhanVien,
     method: paymentMethod,
   });
+
+  // ====== GỬI EMAIL HÓA ĐƠN SAU KHI CHECKOUT THÀNH CÔNG ======
+  try {
+    // Lấy email khách hàng từ booking hoặc bảng khách hàng
+    const hoaDon = settlement.invoice;
+    const booking = settlement.booking;
+    // Ưu tiên guestEmail, fallback sang email trong bảng khách hàng
+    const emailKhach =
+      booking.guestEmail || (booking.khachHang && booking.khachHang.email);
+    const maHoaDon = hoaDon.maHoaDon;
+    const tongTien = hoaDon.tongTien ? Number(hoaDon.tongTien) : 0;
+    const summary = `Cảm ơn quý khách đã lưu trú tại khách sạn của chúng tôi. Tổng số tiền thanh toán của quý khách là: ${tongTien.toLocaleString("vi-VN")} VNĐ. Chi tiết các khoản phí vui lòng xem trong file đính kèm.`;
+    if (emailKhach && maHoaDon) {
+      const { EmailService } = await import("./emailService");
+      await EmailService.sendCheckoutInvoice(emailKhach, maHoaDon, summary);
+      console.log(
+        `[Checkout] Đã gửi email kèm hóa đơn thành công cho: ${emailKhach}`,
+      );
+    } else {
+      console.warn(
+        "[Checkout] Không tìm thấy email khách hoặc mã hóa đơn để gửi hóa đơn.",
+      );
+    }
+  } catch (err) {
+    // Lỗi gửi mail không được làm sập luồng check-out chính
+    console.error("[Checkout] Lỗi gửi email hóa đơn khi trả phòng:", err);
+  }
+  // ============================================================
 
   return {
     success: true,
@@ -827,6 +864,26 @@ export async function xuLyMomoIpnCheckout(payload: CheckoutMomoIpnInput) {
     method: "MOMO_QR",
     paidAt,
   });
+
+  try {
+    const hoaDon = result.invoice;
+    const booking = result.booking;
+    const emailKhach =
+      booking.guestEmail || (booking.khachHang && booking.khachHang.email);
+    const tongTien = hoaDon.tongTien ? Number(hoaDon.tongTien) : 0;
+
+    if (emailKhach && hoaDon.maHoaDon) {
+      const summary = `Cảm ơn quý khách đã lưu trú... Tổng thanh toán: ${tongTien.toLocaleString("vi-VN")} VNĐ.`;
+      const { EmailService } = await import("./emailService");
+      await EmailService.sendCheckoutInvoice(
+        emailKhach,
+        hoaDon.maHoaDon,
+        summary,
+      );
+    }
+  } catch (err) {
+    console.error("[Checkout MoMo IPN] Lỗi gửi email:", err);
+  }
 
   return {
     success: true,
